@@ -107,6 +107,8 @@
   .link-vaga:hover { background: var(--surface-2); }
   .btn-descartar { border: 0; border-radius: 999px; min-height: 44px; padding: 0 16px; background: transparent; color: var(--muted); font: 500 14px var(--sans); cursor: pointer; }
   .btn-descartar:hover { color: var(--text); }
+  .tag-email { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; background: var(--chip-bg, #1E2747); color: #B9C6FF; border-radius: 6px; padding: 3px 8px; }
+  .enviada { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 4px; color: var(--mint); font: 500 14px var(--sans); }
 
   .prefs-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 18px; }
   .prefs-cab h2 { margin: 0; }
@@ -162,6 +164,16 @@
   .upload input { display: none; }
   .ou { text-align: center; color: var(--muted); font-size: 13px; margin: 6px 0 12px; }
   .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 14px; }
+
+  dialog#dlg-email { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 20px; padding: 28px; width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
+  dialog#dlg-email::backdrop { background: rgba(0, 0, 0, .6); }
+  dialog#dlg-email h2 { margin: 0 0 6px; }
+  .dlg-campos { display: flex; flex-direction: column; gap: 16px; }
+  .anexo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
+  .anexo svg { flex: none; color: var(--muted); }
+  .anexo a { color: var(--text); }
+  .anexo .de { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .dlg-acoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 
   @media (max-width: 900px) {
     .resultado { grid-template-columns: 1fr; }
@@ -223,6 +235,7 @@
           <button type="button" class="filtro" data-filtro="novas" aria-pressed="false">Novas</button>
           <button type="button" class="filtro" data-filtro="altas" aria-pressed="false">Aderência 8+</button>
           <button type="button" class="filtro" data-filtro="curriculo" aria-pressed="false">Com currículo</button>
+          <button type="button" class="filtro" data-filtro="email" aria-pressed="false">Por e-mail</button>
         </div>
         <div id="vagas-lista"></div>
       </div>
@@ -338,11 +351,35 @@
   </section>
 </main>
 
+<dialog id="dlg-email" aria-labelledby="dlg-email-titulo">
+  <h2 id="dlg-email-titulo">Candidatura por e-mail</h2>
+  <p class="dica" id="email-vaga"></p>
+  <div class="dlg-campos">
+    <div class="aviso" id="email-config" hidden>O Gmail ainda não está conectado. Crie uma senha de app em myaccount.google.com/apppasswords, coloque GMAIL_USUARIO e GMAIL_SENHA_APP no arquivo .env (veja .env.exemplo) e reinicie o servidor.</div>
+    <label class="campo">Para<input id="email-para" type="email" list="email-opcoes"></label>
+    <datalist id="email-opcoes"></datalist>
+    <label class="campo">Assunto<input id="email-assunto"></label>
+    <label class="campo">Mensagem<textarea id="email-corpo" rows="14"></textarea></label>
+    <div class="anexo">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+      <a id="email-anexo" target="_blank" rel="noopener noreferrer">Vinicius_Dutra_Curriculo.pdf</a>
+      <span class="de">De: <span id="email-de"></span></span>
+    </div>
+    <div class="erro" id="erro-email" hidden></div>
+    <div class="dlg-acoes">
+      <button class="sec" id="email-cancelar" type="button">Cancelar</button>
+      <button class="sec" id="email-refazer" type="button">Reescrever com o Claude</button>
+      <button class="btn" id="email-enviar" type="button">Enviar pela minha conta</button>
+    </div>
+  </div>
+</dialog>
+
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SVG_AVISO = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5"></path><path d="M12 16.5v.5"></path></svg>';
 const SVG_SETA = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"></path><path d="M8 7h9v9"></path></svg>';
+const SVG_CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>';
 
 // markdown mínimo: títulos ##/###/####, listas, **negrito**, `código`, parágrafos
 function md(src) {
@@ -551,19 +588,22 @@ const FILTROS = {
   novas: (v) => v.encontrada > ultimas.vistas,
   altas: (v) => (v.avaliacao?.aderencia ?? 0) >= 8,
   curriculo: (v) => !!v.pasta,
+  email: (v) => v.emails?.length > 0,
 };
 
 function rotulosFiltro() {
-  const n = { todas: ultimas.vagas.length, novas: 0, altas: 0, curriculo: 0 };
+  const n = { todas: ultimas.vagas.length, novas: 0, altas: 0, curriculo: 0, email: 0 };
   for (const v of ultimas.vagas) {
     if (FILTROS.novas(v)) n.novas++;
     if (FILTROS.altas(v)) n.altas++;
     if (FILTROS.curriculo(v)) n.curriculo++;
+    if (FILTROS.email(v)) n.email++;
   }
   $('[data-filtro="todas"]').textContent = `Todas · ${n.todas}`;
   $('[data-filtro="novas"]').textContent = `Novas · ${n.novas}`;
   $('[data-filtro="altas"]').textContent = `Aderência 8+ · ${n.altas}`;
   $('[data-filtro="curriculo"]').textContent = `Com currículo · ${n.curriculo}`;
+  $('[data-filtro="email"]').textContent = `Por e-mail · ${n.email}`;
 }
 for (const b of document.querySelectorAll('[data-filtro]')) b.onclick = () => {
   filtro = b.dataset.filtro;
@@ -625,6 +665,11 @@ function renderVagas(vagas, vistas) {
     ].filter(Boolean);
     const el = document.createElement('article');
     el.className = 'card vaga';
+    const emailAcao = v.emails?.length
+      ? (v.candidatura?.enviadaEm
+        ? `<span class="enviada">${SVG_CHECK}Enviada em ${new Date(v.candidatura.enviadaEm).toLocaleDateString('pt-BR')} para ${esc(v.candidatura.para || '')}</span>`
+        : `<button class="btn" id="ev-${i}">Candidatar por e-mail</button>`)
+      : '';
     el.innerHTML = `
       <div class="nota-bloco ${classe}">
         <strong>${a ? esc(String(a.aderencia ?? '–')) : '…'}</strong>
@@ -633,6 +678,7 @@ function renderVagas(vagas, vistas) {
       <div class="vaga-corpo">
         <div class="vaga-linha">
           ${v.encontrada > vistas ? '<span class="tag-nova">Nova</span>' : ''}
+          ${v.emails?.length ? '<span class="tag-email">Candidatura por e-mail</span>' : ''}
           <span class="meta">${esc(meta)}</span>
         </div>
         <h3>${esc(v.titulo)}</h3>
@@ -641,12 +687,15 @@ function renderVagas(vagas, vistas) {
         ${a?.requisitos?.length ? `<ul class="chips" aria-label="Requisitos">${a.requisitos.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
         ${confirmar.length ? `<div class="aviso">${SVG_AVISO}<div><strong>A confirmar:</strong> ${esc(confirmar.join('; '))}</div></div>` : ''}
         <div class="vaga-acoes">
+          ${emailAcao}
           <button class="btn-claro" id="gv-${i}">${v.pasta ? 'Ver currículo' : 'Gerar currículo'}</button>
           <a class="link-vaga" href="${esc(a?.urlOficial || v.url)}" target="_blank" rel="noopener noreferrer">Abrir vaga${SVG_SETA}</a>
           <button class="btn-descartar" id="dv-${i}">Descartar</button>
         </div>
       </div>`;
     lista.append(el);
+    const ev = $(`#ev-${i}`);
+    if (ev) ev.onclick = () => abrirEmail(v, `#ev-${i}`);
     $(`#gv-${i}`).onclick = () => gerarDaVaga(v, `#gv-${i}`);
     $(`#dv-${i}`).onclick = () => descartarVaga(v);
   });
@@ -676,6 +725,87 @@ async function descartarVaga(v) {
     toast(e.message);
   }
 }
+
+let emailVaga = null;
+let statusEmail = null;
+
+async function abrirEmail(v, sel) {
+  gerandoVaga = true;
+  ocupar(sel, true, 'Preparando…');
+  try {
+    const r = await (await api(`/api/vagas/${encodeURIComponent(v.id)}/email-preparar`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({}),
+    })).json();
+    await preencherEmail(v, r);
+  } catch (e) {
+    toast(e.message);
+  } finally {
+    ocupar(sel, false);
+    gerandoVaga = false;
+  }
+}
+
+async function preencherEmail(v, r) {
+  emailVaga = { ...v, pasta: r.pasta };
+  $('#email-vaga').textContent = `${v.titulo} — ${v.empresa}`;
+  $('#email-para').value = r.rascunho.para || (v.emails || [])[0] || '';
+  $('#email-opcoes').innerHTML = (v.emails || []).map((e) => `<option value="${esc(e)}"></option>`).join('');
+  $('#email-assunto').value = r.rascunho.assunto || '';
+  $('#email-corpo').value = r.rascunho.corpo || '';
+  $('#email-anexo').href = `/saidas/${encodeURIComponent(r.pasta)}/Vinicius_Dutra_Curriculo.pdf`;
+  if (!statusEmail) {
+    try { statusEmail = await (await api('/api/email/status')).json(); }
+    catch { statusEmail = { configurado: false, usuario: '' }; }
+  }
+  $('#email-de').textContent = statusEmail.usuario || 'não configurado';
+  $('#email-config').hidden = !!statusEmail.configurado;
+  $('#email-enviar').disabled = !statusEmail.configurado;
+  $('#erro-email').hidden = true;
+  const dlg = $('#dlg-email');
+  if (!dlg.open) dlg.showModal();
+}
+
+$('#email-refazer').onclick = async () => {
+  if (!emailVaga) return;
+  ocupar('#email-refazer', true, 'Reescrevendo…');
+  try {
+    const r = await (await api(`/api/vagas/${encodeURIComponent(emailVaga.id)}/email-preparar`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ refazer: true }),
+    })).json();
+    $('#email-para').value = r.rascunho.para || (emailVaga.emails || [])[0] || '';
+    $('#email-assunto').value = r.rascunho.assunto || '';
+    $('#email-corpo').value = r.rascunho.corpo || '';
+    $('#erro-email').hidden = true;
+  } catch (e) {
+    mostrarErro('#erro-email', e.message);
+  } finally {
+    ocupar('#email-refazer', false);
+  }
+};
+
+$('#email-enviar').onclick = async () => {
+  if (!emailVaga) return;
+  const para = $('#email-para').value.trim();
+  const assunto = $('#email-assunto').value.trim();
+  const corpo = $('#email-corpo').value.trim();
+  if (!para || !assunto || !corpo) return mostrarErro('#erro-email', 'Preencha destinatário, assunto e mensagem.');
+  limparErro('#erro-email');
+  ocupar('#email-enviar', true, 'Enviando…');
+  try {
+    await (await api(`/api/vagas/${encodeURIComponent(emailVaga.id)}/email-enviar`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ para, assunto, corpo }),
+    })).json();
+    $('#dlg-email').close();
+    toast('Candidatura enviada');
+    carregarVagas();
+  } catch (e) {
+    mostrarErro('#erro-email', e.message);
+  } finally {
+    ocupar('#email-enviar', false);
+  }
+};
+
+$('#email-cancelar').onclick = () => $('#dlg-email').close();
 
 $('#buscar-agora').onclick = async () => {
   try {

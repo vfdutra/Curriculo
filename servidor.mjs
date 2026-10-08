@@ -9,6 +9,8 @@ import { proporBanco } from './banco.mjs';
 import { iniciarBuscador, ciclo, lerEstado, atualizar, status as statusBuscador, lerPreferencias, salvarPreferencias } from './buscador.mjs';
 import { textoVaga, passaFiltro, validarPreferencias } from './vagas-lib.mjs';
 import { safeJoin, listarSaidas, origemLocal } from './lib.mjs';
+import { emailsCandidatura } from './email-lib.mjs';
+import { configEmail, prepararEmail, enviarCandidatura } from './candidatura.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const saidas = join(root, 'saidas');
@@ -24,6 +26,7 @@ const TIPOS = {
 };
 
 let ocupado = false; // ponytail: uma operação com Claude por vez; fila só se um dia tiver vários usuários
+const enviando = new Set(); // ids com candidatura em envio agora, pra não mandar o mesmo e-mail duas vezes
 
 const falha = (status, msg) => Object.assign(new Error(msg), { status });
 
@@ -115,7 +118,8 @@ const rotas = {
   'GET /api/vagas': async (req, res) => {
     const [e, prefs] = await Promise.all([lerEstado(), lerPreferencias()]);
     const ativas = e.vagas.filter((v) => v.status !== 'descartada');
-    const vagas = ativas.filter((v) => passaFiltro(v, prefs)); // mudou as preferências? a lista já obedece, sem rebuscar
+    // e-mails de candidatura calculados na hora (não ficam salvos no json)
+    const vagas = ativas.filter((v) => passaFiltro(v, prefs)).map((v) => ({ ...v, emails: emailsCandidatura(v.descricao) }));
     json(res, 200, {
       ...e, vagas,
       descartadas: e.vagas.length - ativas.length,
@@ -123,6 +127,11 @@ const rotas = {
       rodando: statusBuscador.rodando,
       proxima: statusBuscador.proxima,
     });
+  },
+
+  'GET /api/email/status': async (req, res) => {
+    const { configurado, usuario } = configEmail();
+    json(res, 200, { configurado, usuario }); // nunca devolve a senha
   },
 
   'POST /api/vagas/buscar': async (req, res) => {
@@ -145,6 +154,55 @@ const rotas = {
   },
 };
 
+async function lerJson(req) {
+  const texto = (await lerCorpo(req)).toString('utf8');
+  if (!texto.trim()) return {};
+  try {
+    return JSON.parse(texto);
+  } catch {
+    throw falha(400, 'JSON inválido.');
+  }
+}
+
+const dataBR = (iso) => {
+  const d = new Date(iso);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+};
+
+async function prepararEmailVaga(req, res, vaga, marcar) {
+  const { refazer } = await lerJson(req);
+  if (vaga.candidatura?.rascunho && !refazer) {
+    return json(res, 200, { pasta: vaga.pasta, rascunho: vaga.candidatura.rascunho }); // já tem rascunho: não chama o Claude de novo
+  }
+  return comClaude(res, async () => {
+    let pasta = vaga.pasta;
+    if (!pasta) {
+      const r = await gerar(textoVaga(vaga), () => {});
+      pasta = r.pasta;
+      await marcar({ pasta });
+    }
+    const rascunho = await prepararEmail({ ...vaga, pasta });
+    await marcar({ candidatura: { ...vaga.candidatura, rascunho } });
+    return { pasta, rascunho };
+  });
+}
+
+async function enviarEmailVaga(req, res, vaga, marcar) {
+  const corpo = await lerJson(req);
+  if (vaga.candidatura?.enviadaEm) throw falha(409, `Candidatura já enviada em ${dataBR(vaga.candidatura.enviadaEm)}`);
+  if (!vaga.pasta) throw falha(400, 'Gere o currículo antes.');
+  if (enviando.has(vaga.id)) throw falha(409, 'Essa candidatura já está sendo enviada.');
+  enviando.add(vaga.id);
+  try {
+    const enviadaEm = await enviarCandidatura(vaga, corpo);
+    await marcar({ candidatura: { rascunho: { para: corpo.para, assunto: corpo.assunto, corpo: corpo.corpo }, para: corpo.para, enviadaEm } });
+    json(res, 200, { enviadaEm });
+  } finally {
+    enviando.delete(vaga.id);
+  }
+}
+
 async function acaoVaga(req, res, id, acao) {
   const vaga = (await lerEstado()).vagas.find((v) => v.id === id);
   if (!vaga) throw falha(404, 'Vaga não encontrada.');
@@ -154,6 +212,8 @@ async function acaoVaga(req, res, id, acao) {
     res.writeHead(204);
     return res.end();
   }
+  if (acao === 'email-preparar') return prepararEmailVaga(req, res, vaga, marcar);
+  if (acao === 'email-enviar') return enviarEmailVaga(req, res, vaga, marcar);
   if (vaga.pasta) return json(res, 200, { pasta: vaga.pasta, avisos: [], status: 'ok' });
   return comClaude(res, async () => {
     const r = await gerar(textoVaga(vaga), () => {});
@@ -176,7 +236,7 @@ createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const rota = rotas[`${req.method} ${url.pathname}`];
     if (rota) return await rota(req, res);
-    const v = req.method === 'POST' && url.pathname.match(/^\/api\/vagas\/([^/]+)\/(gerar|descartar)$/);
+    const v = req.method === 'POST' && url.pathname.match(/^\/api\/vagas\/([^/]+)\/(gerar|descartar|email-preparar|email-enviar)$/);
     if (v) return await acaoVaga(req, res, decodeURIComponent(v[1]), v[2]);
     const m = req.method === 'GET' && url.pathname.match(/^\/saidas\/([^/]+)\/([^/]+)$/);
     if (m) return await servirSaida(res, decodeURIComponent(m[1]), decodeURIComponent(m[2]));

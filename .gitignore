@@ -1,5 +1,6 @@
 saidas/
 dados/
+.env
 *.aux
 *.log
 *.out

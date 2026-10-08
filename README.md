@@ -52,3 +52,22 @@ O servidor (`node servidor.mjs`) busca vagas ao subir e depois a cada 1 h. Elas 
 - O estado fica em `dados/vagas.json`, fora do git.
 - `node buscador.mjs` roda um ciclo avulso. Com `BUSCADOR=0`, o servidor sobe sem o agendador.
 - Requer o `cmdc` (Command Code) instalado e logado.
+
+## Candidatura por e-mail
+
+Algumas vagas pedem para enviar o currículo por e-mail. O buscador marca essas vagas e, no card, **Candidatar por e-mail** gera o currículo se ainda não existir, o Claude escreve o rascunho (assunto + corpo) a partir do `base/banco.md` e do relatório da vaga, e você revisa/edita antes de enviar.
+
+- **Senha de app do Gmail** (uma vez):
+  1. Ative a verificação em 2 etapas na sua Conta Google.
+  2. Em https://myaccount.google.com/apppasswords, crie uma senha de app ("Outro" → "Currículo").
+  3. Copie `.env.exemplo` para `.env` e preencha:
+     ```
+     GMAIL_USUARIO=seu.email@gmail.com
+     GMAIL_SENHA_APP=xxxx xxxx xxxx xxxx
+     GMAIL_NOME=Vinicius Dutra
+     ```
+  O `.env` fica fora do git. A aba Vagas mostra se o envio está configurado (`GET /api/email/status`).
+- Ao enviar, o e-mail sai da sua conta do Gmail (aparece em **Enviados**) com o `Vinicius_Dutra_Curriculo.pdf` anexado. O servidor usa SMTP (`smtp.gmail.com:465`) com a senha de app; a senha nunca é devolvida nem registrada em log.
+- Só é enviado quando você clica em enviar — nada é disparado automaticamente.
+- Uma vaga só pode ser candidatada uma vez: depois do envio, o card mostra a data e o envio é bloqueado.
+
