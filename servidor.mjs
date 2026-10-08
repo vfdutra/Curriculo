@@ -6,6 +6,8 @@ import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gerar } from './adaptar.mjs';
 import { proporBanco } from './banco.mjs';
+import { iniciarBuscador, ciclo, lerEstado, atualizar, status as statusBuscador, lerPreferencias, salvarPreferencias } from './buscador.mjs';
+import { textoVaga, passaFiltro, validarPreferencias } from './vagas-lib.mjs';
 import { safeJoin, listarSaidas, origemLocal } from './lib.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -109,7 +111,56 @@ const rotas = {
       }
       return proporBanco({ texto: dados.toString('utf8') });
     }),
+
+  'GET /api/vagas': async (req, res) => {
+    const [e, prefs] = await Promise.all([lerEstado(), lerPreferencias()]);
+    const ativas = e.vagas.filter((v) => v.status !== 'descartada');
+    const vagas = ativas.filter((v) => passaFiltro(v, prefs)); // mudou as preferências? a lista já obedece, sem rebuscar
+    json(res, 200, {
+      ...e, vagas,
+      descartadas: e.vagas.length - ativas.length,
+      ocultas: ativas.length - vagas.length,
+      rodando: statusBuscador.rodando,
+      proxima: statusBuscador.proxima,
+    });
+  },
+
+  'POST /api/vagas/buscar': async (req, res) => {
+    if (statusBuscador.rodando) throw falha(409, 'A busca já está rodando.');
+    ciclo().catch((e) => console.error(e));
+    json(res, 202, { ok: true });
+  },
+
+  'GET /api/preferencias': async (req, res) => json(res, 200, await lerPreferencias()),
+
+  'PUT /api/preferencias': async (req, res) => {
+    const corpo = (await lerCorpo(req)).toString('utf8');
+    let prefs;
+    try {
+      prefs = validarPreferencias(JSON.parse(corpo));
+    } catch (e) {
+      throw falha(400, e instanceof SyntaxError ? 'JSON inválido.' : e.message);
+    }
+    json(res, 200, await salvarPreferencias(prefs));
+  },
 };
+
+async function acaoVaga(req, res, id, acao) {
+  const vaga = (await lerEstado()).vagas.find((v) => v.id === id);
+  if (!vaga) throw falha(404, 'Vaga não encontrada.');
+  const marcar = (campos) => atualizar((e) => { Object.assign(e.vagas.find((v) => v.id === id) || {}, campos); });
+  if (acao === 'descartar') {
+    await marcar({ status: 'descartada', motivo: 'Descartada por você' });
+    res.writeHead(204);
+    return res.end();
+  }
+  if (vaga.pasta) return json(res, 200, { pasta: vaga.pasta, avisos: [], status: 'ok' });
+  return comClaude(res, async () => {
+    const r = await gerar(textoVaga(vaga), () => {});
+    await marcar({ pasta: r.pasta }); // ponto de entrada da futura candidatura automática
+    return { pasta: r.pasta, avisos: r.avisos, status: r.status };
+  });
+}
 
 async function servirSaida(res, pasta, arquivo) {
   const caminho = ARQUIVOS.has(arquivo) && safeJoin(saidas, pasta, arquivo);
@@ -125,6 +176,8 @@ createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const rota = rotas[`${req.method} ${url.pathname}`];
     if (rota) return await rota(req, res);
+    const v = req.method === 'POST' && url.pathname.match(/^\/api\/vagas\/([^/]+)\/(gerar|descartar)$/);
+    if (v) return await acaoVaga(req, res, decodeURIComponent(v[1]), v[2]);
     const m = req.method === 'GET' && url.pathname.match(/^\/saidas\/([^/]+)\/([^/]+)$/);
     if (m) return await servirSaida(res, decodeURIComponent(m[1]), decodeURIComponent(m[2]));
     throw falha(404, 'Não encontrado.');
@@ -133,4 +186,7 @@ createServer(async (req, res) => {
     if (status === 500) console.error(e);
     if (!res.headersSent) json(res, status, { erro: status === 404 ? 'Não encontrado.' : e.message });
   }
-}).listen(PORT, '127.0.0.1', () => console.log(`Abra http://localhost:${PORT}`));
+}).listen(PORT, '127.0.0.1', () => {
+  console.log(`Abra http://localhost:${PORT}`);
+  if (process.env.BUSCADOR !== '0') iniciarBuscador();
+});

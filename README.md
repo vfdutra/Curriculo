@@ -24,3 +24,30 @@ MiKTeX (`pdflatex`), Node 20+, Claude Code CLI logado (`claude`).
 - Mudança de visual → preâmbulo de `base/curriculo.tex` (vale pra todas as gerações).
 - Currículo base: `mkdir -p saidas/base && pdflatex -interaction=nonstopmode -output-directory saidas/base base/curriculo.tex`
 - Testes: `node --test`
+
+## Buscador de vagas
+
+O servidor (`node servidor.mjs`) busca vagas ao subir e depois a cada 1 h. Elas aparecem na aba **Vagas**, mais novas primeiro, com contador de novas.
+
+- **Preferências** (painel "Preferências da busca" na aba Vagas, salvas em `base/preferencias.json`):
+  - modalidades e cidades;
+  - de onde uma vaga remota precisa aceitar;
+  - termos de busca;
+  - palavras de área;
+  - níveis excluídos e exceções;
+  - perfil e observações para o avaliador.
+
+  Ao salvar, a lista é refiltrada na hora e a próxima busca já usa as novas preferências.
+- **Fontes:**
+  - Gupy (portal público).
+  - Himalayas (remotas).
+  - Issues de `backend-br/vagas`, `frontendbr/vagas` e `react-brasil/vagas`.
+  - Busca web no Command Code: LinkedIn, Indeed, Catho e InfoJobs, sem scraping e preferindo o link oficial.
+- **Avaliação** (Command Code com `deepseek/deepseek-v4.1-flash`, 8 vagas por ciclo, sem `--yolo`, ou seja, sem escrita nem shell):
+  - Abre a página oficial e confirma se as inscrições estão abertas e se aceita quem mora no Brasil.
+  - Lista os requisitos, marca o que não está claro e dá nota de aderência ao `base/banco.md`.
+  - Vagas que claramente não servem são descartadas com o motivo.
+- **Gerar currículo** numa vaga roda o adaptador (Claude) com a descrição dela e lembra a pasta gerada.
+- O estado fica em `dados/vagas.json`, fora do git.
+- `node buscador.mjs` roda um ciclo avulso. Com `BUSCADOR=0`, o servidor sobe sem o agendador.
+- Requer o `cmdc` (Command Code) instalado e logado.

@@ -94,6 +94,30 @@
   .ou { text-align: center; color: var(--muted); font-size: 13px; margin: 6px 0 12px; }
   pre.banco { white-space: pre-wrap; font: 13px/1.55 var(--mono); margin: 0; }
   .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; }
+  .contador { background: var(--accent); color: var(--on-accent); border-radius: 999px; font-size: 11px; font-weight: 700; padding: 1px 7px; margin-left: 4px; }
+  .vagas-topo { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; }
+  .vaga h3 { font-size: 16px; margin: 0; letter-spacing: -.01em; }
+  .vaga-cab { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+  .vaga-empresa { color: var(--muted); font-size: 14px; margin: 2px 0 10px; }
+  .nota-mini { font-weight: 700; color: var(--accent); white-space: nowrap; }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .badge { border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; font-size: 12px; color: var(--muted); }
+  .badge.novo { background: var(--accent-soft); color: var(--text); border-color: transparent; font-weight: 600; }
+  .vaga p, .vaga li { font-size: 14px; }
+  .vaga ul { padding-left: 20px; margin: 4px 0 10px; }
+  .vaga .aviso ul { margin: 4px 0 0; }
+  .rotulo-mini { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 8px 0 0; }
+  .prefs summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .prefs summary::-webkit-details-marker { display: none; }
+  .prefs summary::before { content: '▸'; color: var(--muted); }
+  .prefs[open] summary::before { content: '▾'; }
+  .dica-inline { color: var(--muted); font-size: 13px; }
+  .prefs form { display: grid; gap: 12px; margin-top: 16px; }
+  .campo { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  .campo input, .prefs textarea { font: inherit; font-size: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; outline: none; min-height: 0; }
+  .campo input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .modalidades { border: 0; padding: 0; margin: 0; display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; }
+  .modalidades legend { font-size: 13px; color: var(--muted); padding: 0; margin-bottom: 6px; }
   [hidden] { display: none !important; }
   @media (max-width: 900px) {
     body { grid-template-columns: 1fr; }
@@ -114,12 +138,51 @@
 
 <main>
   <nav class="abas" role="tablist">
-    <button class="aba" role="tab" data-aba="vaga" aria-selected="true">Nova vaga</button>
+    <button class="aba" role="tab" data-aba="vagas" aria-selected="true">Vagas<span class="contador" id="cont-novas" hidden></span></button>
+    <button class="aba" role="tab" data-aba="vaga" aria-selected="false">Nova vaga</button>
     <button class="aba" role="tab" data-aba="atualizar" aria-selected="false">Atualizar banco</button>
     <button class="aba" role="tab" data-aba="banco" aria-selected="false">Banco</button>
   </nav>
 
-  <section id="aba-vaga">
+  <section id="aba-vagas">
+    <div class="card">
+      <div class="vagas-topo">
+        <div>
+          <h2>Vagas encontradas</h2>
+          <p class="dica" id="vagas-status">Carregando…</p>
+        </div>
+        <button class="sec" id="buscar-agora">Buscar agora</button>
+      </div>
+      <div id="vagas-erros"></div>
+    </div>
+
+    <details class="card prefs" id="prefs">
+      <summary><strong>Preferências da busca</strong><span class="dica-inline">o que o bot procura e filtra</span></summary>
+      <form id="prefs-form">
+        <fieldset class="modalidades">
+          <legend>Modalidades</legend>
+          <label><input type="checkbox" name="remoto"> Remoto</label>
+          <label><input type="checkbox" name="hibrido"> Híbrido</label>
+          <label><input type="checkbox" name="presencial"> Presencial</label>
+        </fieldset>
+        <label class="campo">Cidades (híbrido e presencial)<input name="cidades"></label>
+        <label class="campo">Remoto: a vaga precisa aceitar candidatos de<input name="paisesRemoto"></label>
+        <label class="campo">Termos de busca<input name="termos"></label>
+        <label class="campo">O cargo precisa ter uma destas palavras<input name="area"></label>
+        <label class="campo">Excluir cargos com<input name="excluir"></label>
+        <label class="campo">…a não ser que também tenham<input name="aceitarNivel"></label>
+        <label class="campo">Seu perfil (vai para a busca web e para o avaliador)<textarea name="perfil" rows="3"></textarea></label>
+        <label class="campo">Observações para o avaliador<textarea name="observacoes" rows="2" placeholder="Ex.: prefiro empresas de produto; evitar consultorias"></textarea></label>
+        <p class="dica" style="margin:0">Listas separadas por vírgula. Compara palavra inteira, sem diferenciar acento ou maiúsculas; termine com * para prefixo (desenvolv* casa com desenvolvedor). A lista abaixo é refiltrada na hora; a próxima busca já usa as novas preferências.</p>
+        <div class="acoes" style="margin:0"><button class="btn" type="submit">Salvar preferências</button></div>
+        <div class="erro" id="erro-prefs" hidden></div>
+      </form>
+    </details>
+
+    <div id="vagas-lista"></div>
+  </section>
+
+  <section id="aba-vaga" hidden>
     <div class="card">
       <h2>Nova vaga</h2>
       <p class="dica">Cole a descrição completa da vaga. A geração leva cerca de 1 minuto.</p>
@@ -250,6 +313,7 @@ function mostrarAba(nome) {
   for (const b of document.querySelectorAll('.aba')) b.setAttribute('aria-selected', String(b.dataset.aba === nome));
   for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== `aba-${nome}`;
   if (nome === 'banco') carregarBanco();
+  if (nome === 'vagas') carregarVagas();
 }
 for (const b of document.querySelectorAll('.aba')) b.onclick = () => mostrarAba(b.dataset.aba);
 
@@ -385,7 +449,149 @@ async function carregarBanco() {
   catch (e) { $('#banco-atual').textContent = e.message; }
 }
 
+const VISTAS = 'vagasVistasAte';
+const lerVistas = () => { try { return localStorage.getItem(VISTAS) || ''; } catch { return ''; } };
+const marcarVistas = (iso) => { try { localStorage.setItem(VISTAS, iso); } catch {} };
+const ROTULO_MOD = { remoto: 'Remoto', hibrido: 'Híbrido', presencial: 'Presencial', indefinida: 'Modalidade a confirmar' };
+const quando = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '–');
+let gerandoVaga = false; // não re-renderiza a lista no meio de uma geração (o botão perderia o spinner)
+
+async function carregarVagas() {
+  let d;
+  try { d = await (await api('/api/vagas')).json(); }
+  catch (e) { $('#vagas-status').textContent = e.message; return; }
+  const vistas = lerVistas();
+  const novas = d.vagas.filter((v) => v.encontrada > vistas).length;
+  $('#cont-novas').textContent = novas;
+  $('#cont-novas').hidden = !novas;
+  document.title = novas ? `(${novas}) Adaptador de Currículo` : 'Adaptador de Currículo';
+  $('#vagas-status').textContent = d.rodando
+    ? 'Buscando agora… (alguns minutos)'
+    : `Última busca: ${quando(d.ultimaBusca)} · próxima: ${quando(d.proxima)} · ${d.vagas.length} vagas`
+      + `${d.ocultas ? ` · ${d.ocultas} ocultas pelas preferências` : ''} · ${d.descartadas} descartadas`;
+  $('#buscar-agora').disabled = d.rodando;
+  $('#vagas-erros').innerHTML = (d.erros || []).map((e) => `<div class="aviso">${esc(e.fonte)}: ${esc(e.msg)}</div>`).join('');
+  if (!gerandoVaga) renderVagas(d.vagas, vistas);
+  const maisNova = d.vagas.reduce((m, v) => (v.encontrada > m ? v.encontrada : m), '');
+  if (!$('#aba-vagas').hidden && maisNova) marcarVistas(maisNova); // viu a aba = viu as novas; o selo "Nova" some no próximo refresh
+}
+
+function renderVagas(vagas, vistas) {
+  const lista = $('#vagas-lista');
+  if (!vagas.length) {
+    lista.innerHTML = '<div class="card vazio">Nenhuma vaga ainda. A busca roda quando o servidor sobe e depois a cada hora.</div>';
+    return;
+  }
+  lista.innerHTML = '';
+  vagas.forEach((v, i) => {
+    const a = v.avaliacao;
+    const confirmar = [
+      a?.aberta === 'incerto' && 'Não deu para confirmar se as inscrições estão abertas',
+      a?.aceitaBrasil === 'incerto' && 'Não está claro se aceita quem mora no Brasil',
+      ...(a?.incertezas || []),
+    ].filter(Boolean);
+    const el = document.createElement('article');
+    el.className = 'card vaga';
+    el.innerHTML = `
+      <div class="vaga-cab">
+        <div>
+          <h3>${esc(v.titulo)}</h3>
+          <p class="vaga-empresa">${esc(v.empresa)} · ${esc(v.local)}</p>
+        </div>
+        <span class="nota-mini">${a ? `${a.aderencia ?? '–'}/10` : 'avaliando…'}</span>
+      </div>
+      <div class="badges">
+        ${v.encontrada > vistas ? '<span class="badge novo">Nova</span>' : ''}
+        <span class="badge">${esc(ROTULO_MOD[v.modalidade] || v.modalidade)}</span>
+        <span class="badge">${esc(v.fonte)}</span>
+        <span class="badge">achada ${esc(quando(v.encontrada))}</span>
+        ${v.prazo ? `<span class="badge">inscrições até ${esc(new Date(v.prazo).toLocaleDateString('pt-BR'))}</span>` : ''}
+      </div>
+      ${a?.resumo ? `<p>${esc(a.resumo)}</p>` : ''}
+      ${a?.requisitos?.length ? `<p class="rotulo-mini">Requisitos</p><ul>${a.requisitos.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
+      ${confirmar.length ? `<div class="aviso"><strong>A confirmar</strong><ul>${confirmar.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
+      <div class="acoes">
+        <button class="btn" id="gv-${i}">${v.pasta ? 'Ver currículo' : 'Gerar currículo'}</button>
+        <a class="sec" href="${esc(a?.urlOficial || v.url)}" target="_blank" rel="noopener noreferrer">Abrir vaga</a>
+        <button class="sec" id="dv-${i}">Descartar</button>
+      </div>`;
+    lista.append(el);
+    $(`#gv-${i}`).onclick = () => gerarDaVaga(v, `#gv-${i}`);
+    $(`#dv-${i}`).onclick = () => descartarVaga(v);
+  });
+}
+
+async function gerarDaVaga(v, sel) {
+  if (v.pasta) return abrirResultado(v.pasta);
+  gerandoVaga = true;
+  ocupar(sel, true, 'Gerando…');
+  try {
+    const r = await (await api(`/api/vagas/${encodeURIComponent(v.id)}/gerar`, { method: 'POST' })).json();
+    await abrirResultado(r.pasta);
+  } catch (e) {
+    toast(e.message);
+  } finally {
+    ocupar(sel, false);
+    gerandoVaga = false;
+    carregarVagas();
+  }
+}
+
+async function descartarVaga(v) {
+  try {
+    await api(`/api/vagas/${encodeURIComponent(v.id)}/descartar`, { method: 'POST' });
+    carregarVagas();
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+$('#buscar-agora').onclick = async () => {
+  try {
+    await api('/api/vagas/buscar', { method: 'POST' });
+    toast('Busca iniciada. Leva alguns minutos.');
+  } catch (e) {
+    toast(e.message);
+  }
+  carregarVagas();
+};
+
+// Preferências: listas viram texto separado por vírgula no formulário
+const LISTAS_PREFS = ['cidades', 'paisesRemoto', 'termos', 'area', 'excluir', 'aceitarNivel'];
+const MODS = ['remoto', 'hibrido', 'presencial'];
+
+async function carregarPrefs() {
+  const p = await (await api('/api/preferencias')).json();
+  const f = $('#prefs-form').elements;
+  for (const k of LISTAS_PREFS) f[k].value = p[k].join(', ');
+  for (const m of MODS) f[m].checked = p.modalidades[m];
+  f.perfil.value = p.perfil;
+  f.observacoes.value = p.observacoes;
+}
+
+$('#prefs').ontoggle = () => {
+  if ($('#prefs').open) carregarPrefs().catch((e) => mostrarErro('#erro-prefs', e.message));
+};
+
+$('#prefs-form').onsubmit = async (ev) => {
+  ev.preventDefault();
+  const f = ev.currentTarget.elements;
+  const p = { perfil: f.perfil.value, observacoes: f.observacoes.value, modalidades: {} };
+  for (const k of LISTAS_PREFS) p[k] = f[k].value.split(',').map((s) => s.trim()).filter(Boolean);
+  for (const m of MODS) p.modalidades[m] = f[m].checked;
+  limparErro('#erro-prefs');
+  try {
+    await api('/api/preferencias', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(p) });
+    toast('Preferências salvas');
+    carregarVagas();
+  } catch (e) {
+    mostrarErro('#erro-prefs', e.message);
+  }
+};
+
 carregarHistorico();
+carregarVagas();
+setInterval(carregarVagas, 60_000);
 </script>
 </body>
 </html>

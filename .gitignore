@@ -1,4 +1,5 @@
 saidas/
+dados/
 *.aux
 *.log
 *.out
