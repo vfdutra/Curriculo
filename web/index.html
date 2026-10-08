@@ -4,182 +4,266 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Adaptador de Currículo</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
 <style>
   :root {
-    --bg: #f6f6f8; --surface: #ffffff; --text: #18181b; --muted: #6b7280; --border: #e6e6eb;
-    --accent: #4f46e5; --accent-hover: #4338ca; --accent-soft: #eef2ff; --on-accent: #ffffff;
-    --warn-bg: #fffbeb; --warn-border: #fde68a; --warn: #92400e;
-    --err-bg: #fef2f2; --err: #b91c1c; --ok: #047857;
-    --radius: 14px; --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
-    --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+    --bg: #0E1110; --surface: #171B19; --surface-2: #1E2321; --header: #080A09;
+    --border: #2A302D; --border-strong: #3A413D;
+    --text: #ECEFEC; --text-2: #C3CAC5; --muted: #9AA39E;
+    --accent: #4361FF; --accent-hover: #5A75FF; --on-accent: #FFFFFF;
+    --mint: #5FE3B0; --peri: #B9C6FF;
+    --warn-bg: #2B2210; --warn: #F2C678; --err-bg: #3A1F1A; --err: #F2B1A4; --ok: #5FE3B0;
+    --chip-bg: #1E2747; --chip: #B9C6FF;
+    --display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+    --sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+    --mono: 'Geist Mono', ui-monospace, Consolas, monospace;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0c0c10; --surface: #16161d; --text: #ececf1; --muted: #9a9aa8; --border: #26262f;
-      --accent: #818cf8; --accent-hover: #a5b4fc; --accent-soft: #1e1b4b; --on-accent: #0c0c10;
-      --warn-bg: #2a2006; --warn-border: #5c4708; --warn: #fcd34d;
-      --err-bg: #2a0e0e; --err: #fca5a5; --ok: #6ee7b7;
-      --shadow: none;
-    }
-  }
+  html { color-scheme: dark; }
   * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    display: grid; grid-template-columns: 280px 1fr; min-height: 100vh;
-  }
-  aside { border-right: 1px solid var(--border); padding: 28px 18px; background: var(--surface); }
-  .marca { font-weight: 700; font-size: 17px; letter-spacing: -.01em; margin: 0 6px 4px; }
-  .marca span { color: var(--accent); }
-  .sub { color: var(--muted); font-size: 13px; margin: 0 6px 24px; }
-  .rotulo { text-transform: uppercase; font-size: 11px; letter-spacing: .08em; color: var(--muted); margin: 0 6px 8px; }
-  #historico { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-  .hist {
-    width: 100%; text-align: left; border: 0; background: none; color: inherit; cursor: pointer;
-    padding: 9px 10px; border-radius: 10px; display: grid; gap: 1px; font: inherit;
-  }
-  .hist:hover { background: var(--bg); }
-  .hist.ativo { background: var(--accent-soft); }
-  .hist-titulo { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .hist-data { font-size: 12px; color: var(--muted); }
-  .vazio { color: var(--muted); font-size: 13px; padding: 8px 10px; }
-  main { padding: 28px clamp(16px, 4vw, 48px); max-width: 1100px; width: 100%; }
-  .abas { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 24px; }
-  .aba { border: 0; background: none; color: var(--muted); font: inherit; font-weight: 500; padding: 7px 14px; border-radius: 9px; cursor: pointer; }
-  .aba[aria-selected="true"] { background: var(--accent-soft); color: var(--text); }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); margin-bottom: 18px; }
-  h2 { font-size: 20px; letter-spacing: -.01em; margin: 0 0 4px; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans); }
+  h1, h2, h3 { font-family: var(--display); font-weight: 700; }
+  h2 { font-size: 20px; letter-spacing: -.01em; margin: 0; }
+  [hidden] { display: none !important; }
+
+  .topo { background: var(--header); border-bottom: 1px solid var(--border); }
+  .topo-inner { max-width: 1320px; margin: 0 auto; padding: 14px 32px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px 32px; }
+  .marca { display: flex; align-items: baseline; gap: 10px; }
+  .marca-logo { font-family: var(--display); font-weight: 700; font-size: 24px; letter-spacing: -.02em; }
+  .marca-logo span { color: var(--mint); }
+  .marca-nome { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .abas { display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto; }
+  .aba { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: #D5DAD6; font: inherit; font-weight: 500; cursor: pointer; }
+  .aba[aria-selected="true"] { background: var(--text); color: var(--bg); font-weight: 600; }
+  #cont-novas { font-family: var(--mono); font-size: 12px; background: var(--mint); color: var(--bg); border-radius: 999px; padding: 1px 8px; }
+  #proxima-busca { display: inline-flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  #proxima-busca::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--mint); flex: none; }
+
+  main { max-width: 1320px; margin: 0 auto; padding: 40px 32px 80px; }
+  #aba-vagas { display: flex; flex-direction: column; gap: 32px; }
+  #vagas-erros:empty { display: none; }
+  #vagas-erros, #avisos { display: flex; flex-direction: column; gap: 8px; }
+
+  .hero { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; }
+  .hero-txt { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
+  .sobre { margin: 0; font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(36px, 6vw, 72px); line-height: .98; letter-spacing: -.035em; text-wrap: balance; }
+  .btn-buscar { min-height: 48px; padding: 0 22px; border: 0; border-radius: 999px; background: var(--accent); color: #FFFFFF; font: 600 15px var(--sans); cursor: pointer; display: inline-flex; align-items: center; gap: 10px; }
+  .btn-buscar:hover { background: var(--accent-hover); }
+  .btn-buscar:disabled { opacity: .7; cursor: progress; }
+
+  .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+  .numeros > div { background: var(--surface); padding: 20px 24px; display: flex; flex-direction: column; gap: 4px; }
+  .numeros strong { font-family: var(--display); font-weight: 700; font-size: 40px; line-height: 1; }
+  .numeros span { color: var(--muted); font-size: 14px; }
+
+  .colunas { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
+  .col-lista { flex: 999 1 560px; min-width: 0; }
+  .col-lado { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+  .filtros { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .filtro { min-height: 44px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font: 500 14px var(--sans); cursor: pointer; }
+  .filtro[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; margin-bottom: 16px; }
+  .vazio { color: var(--muted); font-size: 13px; }
   .dica { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
-  textarea {
-    width: 100%; min-height: 200px; resize: vertical; font: inherit; color: inherit; background: var(--bg);
-    border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; outline: none;
-  }
-  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-  textarea.mono { font: 13px/1.5 var(--mono); min-height: 420px; }
   .acoes { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-  .btn {
-    border: 0; border-radius: 10px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer;
-    background: var(--accent); color: var(--on-accent); display: inline-flex; align-items: center; gap: 8px;
-  }
+
+  .btn { border: 0; border-radius: 999px; min-height: 44px; padding: 0 20px; font: 600 14px var(--sans); cursor: pointer; background: var(--accent); color: var(--on-accent); display: inline-flex; align-items: center; gap: 8px; }
   .btn:hover { background: var(--accent-hover); }
   .btn:disabled { opacity: .7; cursor: progress; }
-  .sec { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 9px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
-  .sec:hover { border-color: var(--accent); }
-  a.sec { text-decoration: none; }
+  .sec { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font: 500 13px var(--sans); cursor: pointer; text-decoration: none; }
+  .sec:hover { background: var(--surface-2); }
   .spin { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: gira .8s linear infinite; }
   @keyframes gira { to { transform: rotate(360deg); } }
-  .erro { background: var(--err-bg); color: var(--err); border-radius: 10px; padding: 10px 14px; margin-top: 14px; font-size: 14px; }
+  .erro { background: var(--err-bg); color: var(--err); border-radius: 12px; padding: 12px 14px; margin-top: 14px; font-size: 14px; }
+
+  textarea { width: 100%; min-height: 160px; resize: vertical; font: 400 14px/1.5 var(--sans); color: var(--text); background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 12px; padding: 12px 14px; outline: none; }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(67,97,255,.35); }
+  textarea.mono { font-family: var(--mono); font-size: 13px; min-height: 420px; }
+  pre.banco { white-space: pre-wrap; font: 13px/1.6 var(--mono); margin: 0; color: var(--text-2); }
+
+  .vaga { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 20px; padding: 24px; border-radius: 20px; }
+  .nota-bloco { width: 76px; height: 76px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+  .nota-bloco strong { font-family: var(--display); font-weight: 700; font-size: 34px; }
+  .nota-bloco span { font-family: var(--mono); font-size: 11px; margin-top: 4px; opacity: .7; }
+  .nota-bloco.alta { background: var(--mint); color: var(--bg); }
+  .nota-bloco.media { background: var(--peri); color: var(--bg); }
+  .nota-bloco.baixa { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+  .vaga-corpo { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .vaga-linha { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .tag-nova { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; background: var(--mint); color: var(--bg); border-radius: 6px; padding: 3px 8px; }
+  .meta { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .vaga h3 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 24px; line-height: 1.15; letter-spacing: -.015em; }
+  .vaga-empresa { margin: 0; color: var(--text-2); }
+  .vaga-resumo { margin: 0; color: #D7DCD8; max-width: 68ch; }
+  .chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips li { border: 1px solid var(--border); background: var(--surface-2); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+  .aviso { display: flex; gap: 10px; align-items: flex-start; background: var(--warn-bg); color: var(--warn); border-radius: 12px; padding: 12px 14px; font-size: 14px; }
+  .aviso svg { flex: none; margin-top: 2px; }
+  .vaga-acoes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 4px; }
+  .btn-claro { border: 0; border-radius: 999px; min-height: 44px; padding: 0 18px; background: var(--text); color: var(--bg); font: 600 14px var(--sans); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-claro:disabled { opacity: .7; cursor: progress; }
+  .link-vaga { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--text); text-decoration: none; font-weight: 500; font-size: 14px; }
+  .link-vaga:hover { background: var(--surface-2); }
+  .btn-descartar { border: 0; border-radius: 999px; min-height: 44px; padding: 0 16px; background: transparent; color: var(--muted); font: 500 14px var(--sans); cursor: pointer; }
+  .btn-descartar:hover { color: var(--text); }
+
+  .prefs-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 18px; }
+  .prefs-cab h2 { margin: 0; }
+  .prefs-cab span { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .prefs form { display: flex; flex-direction: column; gap: 18px; }
+  .prefs .btn { align-self: flex-start; }
+  .modalidades { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .modalidades legend { padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
+  .modalidades .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .modalidades label { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; font-size: 14px; cursor: pointer; }
+  .modalidades label:has(input:checked) { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .modalidades input { accent-color: var(--mint); margin: 0; }
+  .campo { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; }
+  .campo input { min-height: 44px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-2); color: var(--text); font: 400 14px var(--sans); outline: none; }
+  .campo textarea { min-height: 72px; padding: 10px 14px; font-weight: 400; }
+  .campo input:focus, .campo textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(67,97,255,.35); }
+  .mais { border-top: 1px solid var(--border); padding-top: 16px; }
+  .mais summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-2); }
+  .mais[open] summary { margin-bottom: 14px; }
+  .mais-corpo { display: flex; flex-direction: column; gap: 14px; }
+
+  .historico-card { background: var(--surface-2); }
+  .historico-card h2 { margin-bottom: 14px; }
+  #historico { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .hist { width: 100%; min-height: 44px; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 10px; margin: 0 -10px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .hist:hover { background: var(--surface); }
+  .hist.ativo { background: var(--surface); }
+  .hist-titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hist-data { flex: none; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
   .resultado { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
-  .pdf-card { padding: 0; overflow: hidden; }
+  .resultado > div > .card:last-child { margin-bottom: 0; }
+  .pdf-card { padding: 0; overflow: hidden; background: var(--surface-2); border-radius: 24px; }
   .pdf-topo { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); }
   iframe { width: 100%; height: 78vh; border: 0; background: #fff; display: block; }
-  .nota { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
-  .nota strong { font-size: 40px; line-height: 1; letter-spacing: -.02em; color: var(--accent); }
-  .nota span { color: var(--muted); }
-  .aviso { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn); border-radius: 10px; padding: 9px 12px; font-size: 13px; margin-bottom: 8px; }
+  .nota { display: flex; align-items: center; gap: 20px; margin-bottom: 16px; }
+  .nota-bloco-g { width: 88px; height: 88px; flex: none; border-radius: 22px; background: var(--mint); color: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+  .nota-bloco-g strong { font-family: var(--display); font-weight: 700; font-size: 42px; }
+  .nota-bloco-g span { font-family: var(--mono); font-size: 11px; margin-top: 4px; opacity: .7; }
+  .nota-legenda { color: var(--text-2); }
+
   .md h3 { font-size: 14px; margin: 18px 0 6px; }
   .md h4 { font-size: 13px; margin: 14px 0 4px; }
   .md p, .md li { font-size: 14px; }
   .md ul, .md ol { padding-left: 20px; margin: 4px 0; }
   .md code { font-family: var(--mono); font-size: 12px; }
-  .bloco { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; }
-  .bloco-topo { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
-  .bloco pre { margin: 0; padding: 10px 12px; white-space: pre-wrap; font-family: inherit; font-size: 13px; line-height: 1.5; max-height: 220px; overflow: auto; }
-  .upload {
-    display: grid; place-items: center; gap: 6px; border: 1.5px dashed var(--border); border-radius: 12px;
-    padding: 26px; text-align: center; cursor: pointer; color: var(--muted); margin-bottom: 14px;
-  }
-  .upload:hover, .upload.arrastando { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+  .bloco { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 10px; }
+  .bloco-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 8px 8px 14px; background: var(--surface-2); }
+  .bloco-topo strong { font-weight: 600; font-size: 14px; }
+  .bloco pre { margin: 0; padding: 12px 14px; white-space: pre-wrap; font-family: var(--mono); font-size: 12px; color: var(--text-2); max-height: 220px; overflow: auto; }
+  .upload { display: grid; place-items: center; gap: 6px; border: 1.5px dashed var(--border-strong); border-radius: 16px; padding: 26px; text-align: center; cursor: pointer; color: var(--muted); margin-bottom: 14px; }
+  .upload:hover, .upload.arrastando { background: var(--surface-2); color: var(--text); }
   .upload input { display: none; }
   .ou { text-align: center; color: var(--muted); font-size: 13px; margin: 6px 0 12px; }
-  pre.banco { white-space: pre-wrap; font: 13px/1.55 var(--mono); margin: 0; }
-  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; }
-  .contador { background: var(--accent); color: var(--on-accent); border-radius: 999px; font-size: 11px; font-weight: 700; padding: 1px 7px; margin-left: 4px; }
-  .vagas-topo { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; }
-  .vaga h3 { font-size: 16px; margin: 0; letter-spacing: -.01em; }
-  .vaga-cab { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
-  .vaga-empresa { color: var(--muted); font-size: 14px; margin: 2px 0 10px; }
-  .nota-mini { font-weight: 700; color: var(--accent); white-space: nowrap; }
-  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-  .badge { border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; font-size: 12px; color: var(--muted); }
-  .badge.novo { background: var(--accent-soft); color: var(--text); border-color: transparent; font-weight: 600; }
-  .vaga p, .vaga li { font-size: 14px; }
-  .vaga ul { padding-left: 20px; margin: 4px 0 10px; }
-  .vaga .aviso ul { margin: 4px 0 0; }
-  .rotulo-mini { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 8px 0 0; }
-  .prefs summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
-  .prefs summary::-webkit-details-marker { display: none; }
-  .prefs summary::before { content: '▸'; color: var(--muted); }
-  .prefs[open] summary::before { content: '▾'; }
-  .dica-inline { color: var(--muted); font-size: 13px; }
-  .prefs form { display: grid; gap: 12px; margin-top: 16px; }
-  .campo { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
-  .campo input, .prefs textarea { font: inherit; font-size: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; outline: none; min-height: 0; }
-  .campo input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-  .modalidades { border: 0; padding: 0; margin: 0; display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; }
-  .modalidades legend { font-size: 13px; color: var(--muted); padding: 0; margin-bottom: 6px; }
-  [hidden] { display: none !important; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 14px; }
+
   @media (max-width: 900px) {
-    body { grid-template-columns: 1fr; }
-    aside { border-right: 0; border-bottom: 1px solid var(--border); padding: 18px 16px; }
-    #historico { grid-auto-flow: column; grid-auto-columns: minmax(180px, 1fr); overflow-x: auto; }
     .resultado { grid-template-columns: 1fr; }
     iframe { height: 70vh; }
+  }
+  @media (max-width: 640px) {
+    main { padding-left: 16px; padding-right: 16px; }
+    .topo-inner { padding-left: 16px; padding-right: 16px; }
+  }
+  @media (max-width: 560px) {
+    .vaga { grid-template-columns: 1fr; }
+    .nota-bloco { width: 56px; height: 56px; }
   }
 </style>
 </head>
 <body>
-<aside>
-  <p class="marca">Currículo<span>.</span></p>
-  <p class="sub">Adaptação por vaga, pronta pra ATS e Gupy</p>
-  <p class="rotulo">Vagas geradas</p>
-  <ul id="historico"><li class="vazio">Carregando…</li></ul>
-</aside>
+<header class="topo">
+  <div class="topo-inner">
+    <div class="marca">
+      <span class="marca-logo">Currículo<span>.</span></span>
+      <span class="marca-nome">Vinicius Dutra</span>
+    </div>
+    <nav class="abas" role="tablist">
+      <button class="aba" role="tab" data-aba="vagas" aria-selected="true">Vagas<span id="cont-novas" hidden></span></button>
+      <button class="aba" role="tab" data-aba="vaga" aria-selected="false">Nova vaga</button>
+      <button class="aba" role="tab" data-aba="atualizar" aria-selected="false">Atualizar banco</button>
+      <button class="aba" role="tab" data-aba="banco" aria-selected="false">Banco de fatos</button>
+    </nav>
+    <span id="proxima-busca"></span>
+  </div>
+</header>
 
 <main>
-  <nav class="abas" role="tablist">
-    <button class="aba" role="tab" data-aba="vagas" aria-selected="true">Vagas<span class="contador" id="cont-novas" hidden></span></button>
-    <button class="aba" role="tab" data-aba="vaga" aria-selected="false">Nova vaga</button>
-    <button class="aba" role="tab" data-aba="atualizar" aria-selected="false">Atualizar banco</button>
-    <button class="aba" role="tab" data-aba="banco" aria-selected="false">Banco</button>
-  </nav>
-
   <section id="aba-vagas">
-    <div class="card">
-      <div class="vagas-topo">
-        <div>
-          <h2>Vagas encontradas</h2>
-          <p class="dica" id="vagas-status">Carregando…</p>
-        </div>
-        <button class="sec" id="buscar-agora">Buscar agora</button>
+    <div class="hero">
+      <div class="hero-txt">
+        <p id="vagas-status" class="sobre">Carregando…</p>
+        <h1 id="vagas-titulo">Vagas encontradas</h1>
       </div>
-      <div id="vagas-erros"></div>
+      <button class="btn-buscar" id="buscar-agora">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"></path><path d="M21 3v6h-6"></path></svg>
+        Buscar agora
+      </button>
     </div>
 
-    <details class="card prefs" id="prefs">
-      <summary><strong>Preferências da busca</strong><span class="dica-inline">o que o bot procura e filtra</span></summary>
-      <form id="prefs-form">
-        <fieldset class="modalidades">
-          <legend>Modalidades</legend>
-          <label><input type="checkbox" name="remoto"> Remoto</label>
-          <label><input type="checkbox" name="hibrido"> Híbrido</label>
-          <label><input type="checkbox" name="presencial"> Presencial</label>
-        </fieldset>
-        <label class="campo">Cidades (híbrido e presencial)<input name="cidades"></label>
-        <label class="campo">Remoto: a vaga precisa aceitar candidatos de<input name="paisesRemoto"></label>
-        <label class="campo">Termos de busca<input name="termos"></label>
-        <label class="campo">O cargo precisa ter uma destas palavras<input name="area"></label>
-        <label class="campo">Excluir cargos com<input name="excluir"></label>
-        <label class="campo">…a não ser que também tenham<input name="aceitarNivel"></label>
-        <label class="campo">Seu perfil (vai para a busca web e para o avaliador)<textarea name="perfil" rows="3"></textarea></label>
-        <label class="campo">Observações para o avaliador<textarea name="observacoes" rows="2" placeholder="Ex.: prefiro empresas de produto; evitar consultorias"></textarea></label>
-        <p class="dica" style="margin:0">Listas separadas por vírgula. Compara palavra inteira, sem diferenciar acento ou maiúsculas; termine com * para prefixo (desenvolv* casa com desenvolvedor). A lista abaixo é refiltrada na hora; a próxima busca já usa as novas preferências.</p>
-        <div class="acoes" style="margin:0"><button class="btn" type="submit">Salvar preferências</button></div>
-        <div class="erro" id="erro-prefs" hidden></div>
-      </form>
-    </details>
+    <div id="vagas-erros"></div>
 
-    <div id="vagas-lista"></div>
+    <section class="numeros" aria-label="Resumo">
+      <div><strong id="num-vagas">0</strong><span>vagas batem com o seu perfil</span></div>
+      <div><strong id="num-avaliadas">0</strong><span>avaliadas</span></div>
+      <div><strong id="num-descartadas">0</strong><span>descartadas (fechadas ou sem Brasil)</span></div>
+      <div><strong id="num-curriculos">0</strong><span>currículos gerados</span></div>
+    </section>
+
+    <div class="colunas">
+      <div class="col-lista">
+        <div class="filtros" role="group" aria-label="Mostrar">
+          <button type="button" class="filtro" data-filtro="todas" aria-pressed="true">Todas</button>
+          <button type="button" class="filtro" data-filtro="novas" aria-pressed="false">Novas</button>
+          <button type="button" class="filtro" data-filtro="altas" aria-pressed="false">Aderência 8+</button>
+          <button type="button" class="filtro" data-filtro="curriculo" aria-pressed="false">Com currículo</button>
+        </div>
+        <div id="vagas-lista"></div>
+      </div>
+
+      <aside class="col-lado">
+        <section class="card prefs" id="prefs">
+          <div class="prefs-cab"><h2>Preferências</h2><span>refiltra na hora</span></div>
+          <form id="prefs-form">
+            <fieldset class="modalidades">
+              <legend>Modalidade</legend>
+              <div class="pills">
+                <label><input type="checkbox" name="remoto"> Remoto</label>
+                <label><input type="checkbox" name="hibrido"> Híbrido</label>
+                <label><input type="checkbox" name="presencial"> Presencial</label>
+              </div>
+            </fieldset>
+            <label class="campo">Cidades (híbrido e presencial)<input name="cidades"></label>
+            <label class="campo">Remoto: aceitar candidatos de<input name="paisesRemoto"></label>
+            <details class="mais">
+              <summary>Todas as opções</summary>
+              <div class="mais-corpo">
+                <label class="campo">Termos de busca<input name="termos"></label>
+                <label class="campo">O cargo precisa ter uma destas palavras<input name="area"></label>
+                <label class="campo">Excluir cargos com<input name="excluir"></label>
+                <label class="campo">…a não ser que também tenham<input name="aceitarNivel"></label>
+                <label class="campo">Seu perfil (vai para a busca web e para o avaliador)<textarea name="perfil" rows="3"></textarea></label>
+                <label class="campo">Observações para o avaliador<textarea name="observacoes" rows="2" placeholder="Ex.: prefiro empresas de produto; evitar consultorias"></textarea></label>
+                <p class="dica" style="margin:0">Listas separadas por vírgula. Compara palavra inteira, sem diferenciar acento ou maiúsculas; termine com * para prefixo (desenvolv* casa com desenvolvedor). A lista é refiltrada na hora; a próxima busca já usa as novas preferências.</p>
+              </div>
+            </details>
+            <button class="btn" type="submit">Salvar</button>
+            <div class="erro" id="erro-prefs" hidden></div>
+          </form>
+        </section>
+
+        <section class="card historico-card" aria-label="Currículos gerados">
+          <h2>Currículos gerados</h2>
+          <ul id="historico"><li class="vazio">Carregando…</li></ul>
+        </section>
+      </aside>
+    </div>
   </section>
 
   <section id="aba-vaga" hidden>
@@ -201,7 +285,10 @@
       </div>
       <div>
         <div class="card">
-          <div class="nota"><strong id="nota">–</strong><span>/ 10 de aderência</span></div>
+          <div class="nota">
+            <div class="nota-bloco-g"><strong id="nota">–</strong><span>/ 10</span></div>
+            <span class="nota-legenda">de aderência</span>
+          </div>
           <div id="avisos"></div>
           <div class="md" id="relatorio"></div>
         </div>
@@ -254,6 +341,8 @@
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const SVG_AVISO = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5"></path><path d="M12 16.5v.5"></path></svg>';
+const SVG_SETA = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"></path><path d="M8 7h9v9"></path></svg>';
 
 // markdown mínimo: títulos ##/###/####, listas, **negrito**, `código`, parágrafos
 function md(src) {
@@ -455,36 +544,80 @@ const marcarVistas = (iso) => { try { localStorage.setItem(VISTAS, iso); } catch
 const ROTULO_MOD = { remoto: 'Remoto', hibrido: 'Híbrido', presencial: 'Presencial', indefinida: 'Modalidade a confirmar' };
 const quando = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '–');
 let gerandoVaga = false; // não re-renderiza a lista no meio de uma geração (o botão perderia o spinner)
+let filtro = 'todas';
+let ultimas = { vagas: [], vistas: '' };
+const FILTROS = {
+  todas: () => true,
+  novas: (v) => v.encontrada > ultimas.vistas,
+  altas: (v) => (v.avaliacao?.aderencia ?? 0) >= 8,
+  curriculo: (v) => !!v.pasta,
+};
+
+function rotulosFiltro() {
+  const n = { todas: ultimas.vagas.length, novas: 0, altas: 0, curriculo: 0 };
+  for (const v of ultimas.vagas) {
+    if (FILTROS.novas(v)) n.novas++;
+    if (FILTROS.altas(v)) n.altas++;
+    if (FILTROS.curriculo(v)) n.curriculo++;
+  }
+  $('[data-filtro="todas"]').textContent = `Todas · ${n.todas}`;
+  $('[data-filtro="novas"]').textContent = `Novas · ${n.novas}`;
+  $('[data-filtro="altas"]').textContent = `Aderência 8+ · ${n.altas}`;
+  $('[data-filtro="curriculo"]').textContent = `Com currículo · ${n.curriculo}`;
+}
+for (const b of document.querySelectorAll('[data-filtro]')) b.onclick = () => {
+  filtro = b.dataset.filtro;
+  for (const o of document.querySelectorAll('[data-filtro]')) o.setAttribute('aria-pressed', String(o.dataset.filtro === filtro));
+  renderVagas(ultimas.vagas, ultimas.vistas);
+};
 
 async function carregarVagas() {
   let d;
   try { d = await (await api('/api/vagas')).json(); }
   catch (e) { $('#vagas-status').textContent = e.message; return; }
   const vistas = lerVistas();
+  ultimas = { vagas: d.vagas, vistas };
   const novas = d.vagas.filter((v) => v.encontrada > vistas).length;
-  $('#cont-novas').textContent = novas;
+  $('#cont-novas').textContent = `${novas} novas`;
   $('#cont-novas').hidden = !novas;
   document.title = novas ? `(${novas}) Adaptador de Currículo` : 'Adaptador de Currículo';
+  $('#vagas-titulo').textContent = novas > 0
+    ? `${novas} vaga${novas === 1 ? '' : 's'} nova${novas === 1 ? '' : 's'} pra você olhar.`
+    : `${d.vagas.length} vagas abertas pro seu perfil.`;
   $('#vagas-status').textContent = d.rodando
     ? 'Buscando agora… (alguns minutos)'
-    : `Última busca: ${quando(d.ultimaBusca)} · próxima: ${quando(d.proxima)} · ${d.vagas.length} vagas`
-      + `${d.ocultas ? ` · ${d.ocultas} ocultas pelas preferências` : ''} · ${d.descartadas} descartadas`;
+    : `Última busca ${quando(d.ultimaBusca)}${d.ocultas ? ` · ${d.ocultas} ocultas pelas preferências` : ''}`;
+  $('#proxima-busca').textContent = d.rodando ? 'Buscando…' : `Próxima busca ${quando(d.proxima)}`;
+  $('#num-vagas').textContent = d.vagas.length;
+  $('#num-avaliadas').textContent = d.vagas.filter((v) => v.avaliacao).length;
+  $('#num-descartadas').textContent = d.descartadas;
+  $('#num-curriculos').textContent = d.vagas.filter((v) => v.pasta).length;
   $('#buscar-agora').disabled = d.rodando;
-  $('#vagas-erros').innerHTML = (d.erros || []).map((e) => `<div class="aviso">${esc(e.fonte)}: ${esc(e.msg)}</div>`).join('');
+  $('#vagas-erros').innerHTML = (d.erros || []).map((e) => `<div class="aviso"><div>${esc(e.fonte)}: ${esc(e.msg)}</div></div>`).join('');
   if (!gerandoVaga) renderVagas(d.vagas, vistas);
   const maisNova = d.vagas.reduce((m, v) => (v.encontrada > m ? v.encontrada : m), '');
   if (!$('#aba-vagas').hidden && maisNova) marcarVistas(maisNova); // viu a aba = viu as novas; o selo "Nova" some no próximo refresh
 }
 
 function renderVagas(vagas, vistas) {
+  rotulosFiltro();
   const lista = $('#vagas-lista');
   if (!vagas.length) {
     lista.innerHTML = '<div class="card vazio">Nenhuma vaga ainda. A busca roda quando o servidor sobe e depois a cada hora.</div>';
     return;
   }
+  const mostrar = vagas.filter(FILTROS[filtro] || FILTROS.todas);
+  if (!mostrar.length) {
+    lista.innerHTML = '<div class="card vazio">Nenhuma vaga neste filtro.</div>';
+    return;
+  }
   lista.innerHTML = '';
-  vagas.forEach((v, i) => {
+  mostrar.forEach((v, i) => {
     const a = v.avaliacao;
+    const classe = a && a.aderencia >= 9 ? 'alta' : a && a.aderencia >= 7 ? 'media' : 'baixa';
+    const modalidade = ROTULO_MOD[v.modalidade] || v.modalidade || '';
+    const meta = `${modalidade} · ${v.local} · ${v.fonte} · achada ${quando(v.encontrada)}`
+      + (v.prazo ? ` · inscrições até ${new Date(v.prazo).toLocaleDateString('pt-BR')}` : '');
     const confirmar = [
       a?.aberta === 'incerto' && 'Não deu para confirmar se as inscrições estão abertas',
       a?.aceitaBrasil === 'incerto' && 'Não está claro se aceita quem mora no Brasil',
@@ -493,27 +626,25 @@ function renderVagas(vagas, vistas) {
     const el = document.createElement('article');
     el.className = 'card vaga';
     el.innerHTML = `
-      <div class="vaga-cab">
-        <div>
-          <h3>${esc(v.titulo)}</h3>
-          <p class="vaga-empresa">${esc(v.empresa)} · ${esc(v.local)}</p>
+      <div class="nota-bloco ${classe}">
+        <strong>${a ? esc(String(a.aderencia ?? '–')) : '…'}</strong>
+        <span>${a ? '/ 10' : 'avaliando'}</span>
+      </div>
+      <div class="vaga-corpo">
+        <div class="vaga-linha">
+          ${v.encontrada > vistas ? '<span class="tag-nova">Nova</span>' : ''}
+          <span class="meta">${esc(meta)}</span>
         </div>
-        <span class="nota-mini">${a ? `${a.aderencia ?? '–'}/10` : 'avaliando…'}</span>
-      </div>
-      <div class="badges">
-        ${v.encontrada > vistas ? '<span class="badge novo">Nova</span>' : ''}
-        <span class="badge">${esc(ROTULO_MOD[v.modalidade] || v.modalidade)}</span>
-        <span class="badge">${esc(v.fonte)}</span>
-        <span class="badge">achada ${esc(quando(v.encontrada))}</span>
-        ${v.prazo ? `<span class="badge">inscrições até ${esc(new Date(v.prazo).toLocaleDateString('pt-BR'))}</span>` : ''}
-      </div>
-      ${a?.resumo ? `<p>${esc(a.resumo)}</p>` : ''}
-      ${a?.requisitos?.length ? `<p class="rotulo-mini">Requisitos</p><ul>${a.requisitos.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
-      ${confirmar.length ? `<div class="aviso"><strong>A confirmar</strong><ul>${confirmar.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
-      <div class="acoes">
-        <button class="btn" id="gv-${i}">${v.pasta ? 'Ver currículo' : 'Gerar currículo'}</button>
-        <a class="sec" href="${esc(a?.urlOficial || v.url)}" target="_blank" rel="noopener noreferrer">Abrir vaga</a>
-        <button class="sec" id="dv-${i}">Descartar</button>
+        <h3>${esc(v.titulo)}</h3>
+        <p class="vaga-empresa">${esc(v.empresa)}</p>
+        ${a?.resumo ? `<p class="vaga-resumo">${esc(a.resumo)}</p>` : ''}
+        ${a?.requisitos?.length ? `<ul class="chips" aria-label="Requisitos">${a.requisitos.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
+        ${confirmar.length ? `<div class="aviso">${SVG_AVISO}<div><strong>A confirmar:</strong> ${esc(confirmar.join('; '))}</div></div>` : ''}
+        <div class="vaga-acoes">
+          <button class="btn-claro" id="gv-${i}">${v.pasta ? 'Ver currículo' : 'Gerar currículo'}</button>
+          <a class="link-vaga" href="${esc(a?.urlOficial || v.url)}" target="_blank" rel="noopener noreferrer">Abrir vaga${SVG_SETA}</a>
+          <button class="btn-descartar" id="dv-${i}">Descartar</button>
+        </div>
       </div>`;
     lista.append(el);
     $(`#gv-${i}`).onclick = () => gerarDaVaga(v, `#gv-${i}`);
@@ -569,10 +700,6 @@ async function carregarPrefs() {
   f.observacoes.value = p.observacoes;
 }
 
-$('#prefs').ontoggle = () => {
-  if ($('#prefs').open) carregarPrefs().catch((e) => mostrarErro('#erro-prefs', e.message));
-};
-
 $('#prefs-form').onsubmit = async (ev) => {
   ev.preventDefault();
   const f = ev.currentTarget.elements;
@@ -589,6 +716,7 @@ $('#prefs-form').onsubmit = async (ev) => {
   }
 };
 
+carregarPrefs().catch((e) => mostrarErro('#erro-prefs', e.message));
 carregarHistorico();
 carregarVagas();
 setInterval(carregarVagas, 60_000);
