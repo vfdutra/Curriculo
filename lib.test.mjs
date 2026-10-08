@@ -1,7 +1,7 @@
 // lib.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { splitTemplate, assemble, pickTag, parseResponse, pageCount, skillsFromTex, skillsFromGupy, unknownSkills, slugify } from './lib.mjs';
+import { splitTemplate, assemble, parseResponse, pickTag, pageCount, skillsFromTex, skillsFromGupy, unknownSkills, slugify, safeJoin, listarSaidas, promptBanco, origemLocal } from './lib.mjs';
 
 const TEX = '\\documentclass{article}\n\\usepackage{x}\n\\begin{document}\nCORPO\n\\end{document}\n';
 
@@ -62,4 +62,44 @@ test('unknownSkills ignora caixa e acento e devolve só o que não está no banc
 test('slugify usa a primeira linha não vazia', () => {
   assert.equal(slugify('\n  Desenvolvedor(a) Full Stack Pleno — PHP/Laravel\nresto'), 'desenvolvedor-a-full-stack-pleno-php-laravel');
   assert.equal(slugify('   '), 'vaga');
+});
+
+test('safeJoin aceita caminho dentro da base e recusa saída dela', () => {
+  assert.ok(safeJoin('/tmp/saidas', '2026-10-08-x', 'gupy.md').endsWith('gupy.md'));
+  assert.equal(safeJoin('/tmp/saidas', '..', 'base'), null);
+  assert.equal(safeJoin('/tmp/saidas', 'a/../../segredo'), null);
+  assert.equal(safeJoin('/tmp/saidas', '/etc/passwd'), null);
+});
+
+test('listarSaidas filtra pastas de geração e ordena da mais recente', () => {
+  const r = listarSaidas([
+    { nome: '2026-10-08-dev-php', mtimeMs: 2 },
+    { nome: '_uploads', mtimeMs: 9 },
+    { nome: '2026-10-07-dev-react', mtimeMs: 5, titulo: 'Dev React Pleno — remoto' },
+    { nome: 'base', mtimeMs: 1 },
+  ]);
+  assert.deepEqual(r, [
+    { pasta: '2026-10-07-dev-react', data: '2026-10-07', titulo: 'Dev React Pleno — remoto' },
+    { pasta: '2026-10-08-dev-php', data: '2026-10-08', titulo: 'dev php' },
+  ]);
+});
+
+test('promptBanco monta a fonte de texto ou de PDF', () => {
+  const t = promptBanco('REGRAS', 'BANCO', { texto: 'fiz X' });
+  assert.ok(t.startsWith('REGRAS'));
+  assert.ok(t.includes('<banco>\nBANCO\n</banco>'));
+  assert.ok(t.includes('<fonte>\nfiz X\n</fonte>'));
+  const p = promptBanco('REGRAS', 'BANCO', { pdfPath: 'C:/x/cv.pdf' });
+  assert.ok(p.includes('C:/x/cv.pdf'));
+  assert.match(p, /Leia o currículo em PDF/);
+  assert.throws(() => promptBanco('R', 'B', {}), /texto ou pdfPath/);
+});
+
+test('origemLocal só aceita host e origin locais', () => {
+  assert.equal(origemLocal({ host: 'localhost:3000' }), true);
+  assert.equal(origemLocal({ host: '127.0.0.1:3000', origin: 'http://localhost:3000' }), true);
+  assert.equal(origemLocal({ host: 'evil.com' }), false);
+  assert.equal(origemLocal({ host: 'localhost:3000', origin: 'https://evil.com' }), false);
+  assert.equal(origemLocal({ host: 'localhost:3000', origin: 'null' }), false);
+  assert.equal(origemLocal({}), false);
 });

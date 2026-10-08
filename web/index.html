@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adaptador de Currículo</title>
+<style>
+  :root {
+    --bg: #f6f6f8; --surface: #ffffff; --text: #18181b; --muted: #6b7280; --border: #e6e6eb;
+    --accent: #4f46e5; --accent-hover: #4338ca; --accent-soft: #eef2ff; --on-accent: #ffffff;
+    --warn-bg: #fffbeb; --warn-border: #fde68a; --warn: #92400e;
+    --err-bg: #fef2f2; --err: #b91c1c; --ok: #047857;
+    --radius: 14px; --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04);
+    --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c0c10; --surface: #16161d; --text: #ececf1; --muted: #9a9aa8; --border: #26262f;
+      --accent: #818cf8; --accent-hover: #a5b4fc; --accent-soft: #1e1b4b; --on-accent: #0c0c10;
+      --warn-bg: #2a2006; --warn-border: #5c4708; --warn: #fcd34d;
+      --err-bg: #2a0e0e; --err: #fca5a5; --ok: #6ee7b7;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: grid; grid-template-columns: 280px 1fr; min-height: 100vh;
+  }
+  aside { border-right: 1px solid var(--border); padding: 28px 18px; background: var(--surface); }
+  .marca { font-weight: 700; font-size: 17px; letter-spacing: -.01em; margin: 0 6px 4px; }
+  .marca span { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 6px 24px; }
+  .rotulo { text-transform: uppercase; font-size: 11px; letter-spacing: .08em; color: var(--muted); margin: 0 6px 8px; }
+  #historico { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .hist {
+    width: 100%; text-align: left; border: 0; background: none; color: inherit; cursor: pointer;
+    padding: 9px 10px; border-radius: 10px; display: grid; gap: 1px; font: inherit;
+  }
+  .hist:hover { background: var(--bg); }
+  .hist.ativo { background: var(--accent-soft); }
+  .hist-titulo { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hist-data { font-size: 12px; color: var(--muted); }
+  .vazio { color: var(--muted); font-size: 13px; padding: 8px 10px; }
+  main { padding: 28px clamp(16px, 4vw, 48px); max-width: 1100px; width: 100%; }
+  .abas { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 24px; }
+  .aba { border: 0; background: none; color: var(--muted); font: inherit; font-weight: 500; padding: 7px 14px; border-radius: 9px; cursor: pointer; }
+  .aba[aria-selected="true"] { background: var(--accent-soft); color: var(--text); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); margin-bottom: 18px; }
+  h2 { font-size: 20px; letter-spacing: -.01em; margin: 0 0 4px; }
+  .dica { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+  textarea {
+    width: 100%; min-height: 200px; resize: vertical; font: inherit; color: inherit; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; outline: none;
+  }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  textarea.mono { font: 13px/1.5 var(--mono); min-height: 420px; }
+  .acoes { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  .btn {
+    border: 0; border-radius: 10px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer;
+    background: var(--accent); color: var(--on-accent); display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn:hover { background: var(--accent-hover); }
+  .btn:disabled { opacity: .7; cursor: progress; }
+  .sec { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 9px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .sec:hover { border-color: var(--accent); }
+  a.sec { text-decoration: none; }
+  .spin { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: gira .8s linear infinite; }
+  @keyframes gira { to { transform: rotate(360deg); } }
+  .erro { background: var(--err-bg); color: var(--err); border-radius: 10px; padding: 10px 14px; margin-top: 14px; font-size: 14px; }
+  .resultado { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .pdf-card { padding: 0; overflow: hidden; }
+  .pdf-topo { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  iframe { width: 100%; height: 78vh; border: 0; background: #fff; display: block; }
+  .nota { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
+  .nota strong { font-size: 40px; line-height: 1; letter-spacing: -.02em; color: var(--accent); }
+  .nota span { color: var(--muted); }
+  .aviso { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn); border-radius: 10px; padding: 9px 12px; font-size: 13px; margin-bottom: 8px; }
+  .md h3 { font-size: 14px; margin: 18px 0 6px; }
+  .md h4 { font-size: 13px; margin: 14px 0 4px; }
+  .md p, .md li { font-size: 14px; }
+  .md ul, .md ol { padding-left: 20px; margin: 4px 0; }
+  .md code { font-family: var(--mono); font-size: 12px; }
+  .bloco { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; }
+  .bloco-topo { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .bloco pre { margin: 0; padding: 10px 12px; white-space: pre-wrap; font-family: inherit; font-size: 13px; line-height: 1.5; max-height: 220px; overflow: auto; }
+  .upload {
+    display: grid; place-items: center; gap: 6px; border: 1.5px dashed var(--border); border-radius: 12px;
+    padding: 26px; text-align: center; cursor: pointer; color: var(--muted); margin-bottom: 14px;
+  }
+  .upload:hover, .upload.arrastando { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+  .upload input { display: none; }
+  .ou { text-align: center; color: var(--muted); font-size: 13px; margin: 6px 0 12px; }
+  pre.banco { white-space: pre-wrap; font: 13px/1.55 var(--mono); margin: 0; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 900px) {
+    body { grid-template-columns: 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid var(--border); padding: 18px 16px; }
+    #historico { grid-auto-flow: column; grid-auto-columns: minmax(180px, 1fr); overflow-x: auto; }
+    .resultado { grid-template-columns: 1fr; }
+    iframe { height: 70vh; }
+  }
+</style>
+</head>
+<body>
+<aside>
+  <p class="marca">Currículo<span>.</span></p>
+  <p class="sub">Adaptação por vaga, pronta pra ATS e Gupy</p>
+  <p class="rotulo">Vagas geradas</p>
+  <ul id="historico"><li class="vazio">Carregando…</li></ul>
+</aside>
+
+<main>
+  <nav class="abas" role="tablist">
+    <button class="aba" role="tab" data-aba="vaga" aria-selected="true">Nova vaga</button>
+    <button class="aba" role="tab" data-aba="atualizar" aria-selected="false">Atualizar banco</button>
+    <button class="aba" role="tab" data-aba="banco" aria-selected="false">Banco</button>
+  </nav>
+
+  <section id="aba-vaga">
+    <div class="card">
+      <h2>Nova vaga</h2>
+      <p class="dica">Cole a descrição completa da vaga. A geração leva cerca de 1 minuto.</p>
+      <textarea id="vaga" placeholder="Desenvolvedor(a) Full Stack Pleno…"></textarea>
+      <div class="acoes"><button class="btn" id="gerar">Gerar currículo</button></div>
+      <div class="erro" id="erro-vaga" hidden></div>
+    </div>
+
+    <div class="resultado" id="resultado" hidden>
+      <div class="card pdf-card">
+        <div class="pdf-topo">
+          <strong>Currículo</strong>
+          <a class="sec" id="baixar" download="Vinicius_Dutra_Curriculo.pdf">Baixar PDF</a>
+        </div>
+        <iframe id="pdf" title="Currículo em PDF"></iframe>
+      </div>
+      <div>
+        <div class="card">
+          <div class="nota"><strong id="nota">–</strong><span>/ 10 de aderência</span></div>
+          <div id="avisos"></div>
+          <div class="md" id="relatorio"></div>
+        </div>
+        <div class="card">
+          <h2>Para a Gupy</h2>
+          <p class="dica">Cole cada bloco no campo correspondente do seu perfil.</p>
+          <div id="gupy"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="aba-atualizar" hidden>
+    <div class="card">
+      <h2>Atualizar banco</h2>
+      <p class="dica">Envie um currículo em PDF ou conte o que você fez. O Claude propõe as mudanças e você revisa antes de salvar.</p>
+      <label class="upload" id="upload">
+        <input type="file" id="pdf-input" accept="application/pdf">
+        <strong>Arraste um PDF ou clique para escolher</strong>
+        <span id="pdf-nome">Nenhum arquivo</span>
+      </label>
+      <p class="ou">ou</p>
+      <textarea id="texto-livre" placeholder="Ex.: Na Verden, implementei um relatório de consumo de combustível com Laravel e React que reduziu o tempo de análise do cliente de 2 dias para 10 minutos."></textarea>
+      <p class="dica" style="margin:8px 0 0">Se você enviar um PDF, o texto acima é ignorado.</p>
+      <div class="acoes"><button class="btn" id="propor">Propor mudanças</button></div>
+      <div class="erro" id="erro-banco" hidden></div>
+    </div>
+
+    <div class="card" id="revisao" hidden>
+      <h2>Revise antes de salvar</h2>
+      <div class="md" id="resumo"></div>
+      <p class="dica" style="margin-top:16px">Banco proposto (editável):</p>
+      <textarea class="mono" id="banco-novo"></textarea>
+      <div class="acoes">
+        <button class="btn" id="salvar">Salvar no banco</button>
+        <button class="sec" id="descartar">Descartar</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="aba-banco" hidden>
+    <div class="card">
+      <h2>Banco de fatos</h2>
+      <p class="dica">Fonte da verdade: o adaptador só usa o que está aqui.</p>
+      <pre class="banco" id="banco-atual">Carregando…</pre>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// markdown mínimo: títulos ##/###/####, listas, **negrito**, `código`, parágrafos
+function md(src) {
+  const out = [];
+  let lista = null;
+  const inline = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  const fecha = () => { if (lista) { out.push(`</${lista}>`); lista = null; } };
+  for (const l of src.split(/\r?\n/)) {
+    let m;
+    if ((m = l.match(/^(#{2,4})\s+(.*)/))) { fecha(); const n = m[1].length + 1; out.push(`<h${n}>${inline(m[2])}</h${n}>`); }
+    else if ((m = l.match(/^\s*([-*]|\d+\.)\s+(.*)/))) {
+      const tipo = /\d/.test(m[1]) ? 'ol' : 'ul';
+      if (lista !== tipo) { fecha(); out.push(`<${tipo}>`); lista = tipo; }
+      out.push(`<li>${inline(m[2])}</li>`);
+    }
+    else if (!l.trim()) fecha();
+    else { fecha(); out.push(`<p>${inline(l)}</p>`); }
+  }
+  fecha();
+  return out.join('');
+}
+
+async function api(url, opts) {
+  const r = await fetch(url, opts);
+  if (!r.ok) {
+    let msg = `Erro ${r.status}`;
+    try { msg = (await r.json()).erro || msg; } catch {}
+    throw new Error(msg);
+  }
+  return r;
+}
+
+const mostrarErro = (sel, msg) => { const el = $(sel); el.textContent = msg; el.hidden = false; };
+const limparErro = (sel) => { $(sel).hidden = true; };
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.append(t);
+  setTimeout(() => t.remove(), 2200);
+}
+
+const timers = {};
+function ocupar(sel, on, rotulo = '') {
+  const b = $(sel);
+  if (on) {
+    b.dataset.rotulo = b.textContent; b.disabled = true;
+    const t0 = Date.now();
+    const tick = () => { b.innerHTML = `<span class="spin"></span>${rotulo} ${Math.round((Date.now() - t0) / 1000)}s`; };
+    tick(); timers[sel] = setInterval(tick, 1000);
+  } else {
+    clearInterval(timers[sel]); b.disabled = false; b.textContent = b.dataset.rotulo;
+  }
+}
+
+function mostrarAba(nome) {
+  for (const b of document.querySelectorAll('.aba')) b.setAttribute('aria-selected', String(b.dataset.aba === nome));
+  for (const s of document.querySelectorAll('main > section')) s.hidden = s.id !== `aba-${nome}`;
+  if (nome === 'banco') carregarBanco();
+}
+for (const b of document.querySelectorAll('.aba')) b.onclick = () => mostrarAba(b.dataset.aba);
+
+async function carregarHistorico(ativa) {
+  const ul = $('#historico');
+  try {
+    const itens = await (await api('/api/historico')).json();
+    ul.innerHTML = itens.length ? '' : '<li class="vazio">Nenhuma vaga ainda</li>';
+    for (const it of itens) {
+      const li = document.createElement('li');
+      li.innerHTML = `<button class="hist${it.pasta === ativa ? ' ativo' : ''}"><span class="hist-titulo">${esc(it.titulo)}</span><span class="hist-data">${esc(it.data.split('-').reverse().join('/'))}</span></button>`;
+      li.querySelector('button').onclick = () => abrirResultado(it.pasta);
+      ul.append(li);
+    }
+  } catch (e) {
+    ul.innerHTML = `<li class="vazio">${esc(e.message)}</li>`;
+  }
+}
+
+function renderRelatorio(rel) {
+  const [principal, avisos = ''] = rel.split(/^## Avisos automáticos\s*$/m);
+  const nota = principal.match(/(\d+(?:[.,]\d+)?)\s*\/\s*10/);
+  $('#nota').textContent = nota ? nota[1] : '–';
+  $('#relatorio').innerHTML = md(principal.replace(/^## Aderência\s*$/m, '')); // a nota já está em destaque; a justificativa fica
+  const itens = [...avisos.matchAll(/^\s*-\s+(.+)$/gm)].map((m) => m[1]).filter((a) => a.trim() !== 'nenhum');
+  $('#avisos').innerHTML = itens.map((a) => `<div class="aviso">${esc(a)}</div>`).join('');
+}
+
+function renderGupy(texto) {
+  const blocos = [];
+  let atual = null;
+  for (const l of texto.split(/\r?\n/)) {
+    const m = l.match(/^(#{2,3})\s+(.*)/);
+    if (m) { atual = { titulo: m[2], linhas: [] }; blocos.push(atual); }
+    else if (atual) atual.linhas.push(l);
+  }
+  const cont = $('#gupy');
+  cont.innerHTML = '';
+  for (const b of blocos) {
+    const conteudo = b.linhas.join('\n').replace(/^\s*(?:\d+\.|[-*])\s+/gm, '').trim();
+    if (!conteudo) continue;
+    const div = document.createElement('div');
+    div.className = 'bloco';
+    div.innerHTML = `<div class="bloco-topo"><strong>${esc(b.titulo)}</strong><button class="sec">Copiar</button></div><pre>${esc(conteudo)}</pre>`;
+    const btn = div.querySelector('button');
+    btn.onclick = async () => {
+      await navigator.clipboard.writeText(conteudo);
+      btn.textContent = 'Copiado ✓';
+      setTimeout(() => { btn.textContent = 'Copiar'; }, 1500);
+    };
+    cont.append(div);
+  }
+}
+
+async function abrirResultado(pasta) {
+  mostrarAba('vaga');
+  const base = `/saidas/${encodeURIComponent(pasta)}/`;
+  const [gupy, rel, vaga] = await Promise.all(
+    ['gupy.md', 'relatorio.md', 'vaga.txt'].map((f) => api(base + f).then((r) => r.text()).catch(() => '')),
+  );
+  $('#vaga').value = vaga;
+  $('#pdf').src = `${base}Vinicius_Dutra_Curriculo.pdf?t=${Date.now()}`;
+  $('#baixar').href = `${base}Vinicius_Dutra_Curriculo.pdf`;
+  renderRelatorio(rel);
+  renderGupy(gupy);
+  $('#resultado').hidden = false;
+  carregarHistorico(pasta);
+}
+
+$('#gerar').onclick = async () => {
+  const vaga = $('#vaga').value.trim();
+  if (!vaga) return mostrarErro('#erro-vaga', 'Cole a descrição da vaga.');
+  limparErro('#erro-vaga');
+  ocupar('#gerar', true, 'Gerando…');
+  try {
+    const r = await (await api('/api/gerar', { method: 'POST', headers: { 'content-type': 'text/plain; charset=utf-8' }, body: vaga })).json();
+    await abrirResultado(r.pasta);
+  } catch (e) {
+    mostrarErro('#erro-vaga', e.message);
+  } finally {
+    ocupar('#gerar', false);
+  }
+};
+
+let pdfEscolhido = null;
+function escolherPdf(arquivo) {
+  pdfEscolhido = arquivo || null;
+  $('#pdf-nome').textContent = pdfEscolhido ? pdfEscolhido.name : 'Nenhum arquivo';
+}
+$('#pdf-input').onchange = (e) => escolherPdf(e.target.files[0]);
+const zona = $('#upload');
+zona.ondragover = (e) => { e.preventDefault(); zona.classList.add('arrastando'); };
+zona.ondragleave = () => zona.classList.remove('arrastando');
+zona.ondrop = (e) => { e.preventDefault(); zona.classList.remove('arrastando'); escolherPdf(e.dataTransfer.files[0]); };
+
+$('#propor').onclick = async () => {
+  const texto = $('#texto-livre').value.trim();
+  if (!pdfEscolhido && !texto) return mostrarErro('#erro-banco', 'Envie um PDF ou escreva o que você fez.');
+  limparErro('#erro-banco');
+  const opts = pdfEscolhido
+    ? { method: 'POST', headers: { 'content-type': 'application/pdf' }, body: pdfEscolhido }
+    : { method: 'POST', headers: { 'content-type': 'text/plain; charset=utf-8' }, body: texto };
+  ocupar('#propor', true, 'Analisando…');
+  try {
+    const r = await (await api('/api/banco/propor', opts)).json();
+    $('#resumo').innerHTML = md(r.resumo);
+    $('#banco-novo').value = r.banco;
+    $('#revisao').hidden = false;
+    $('#revisao').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) {
+    mostrarErro('#erro-banco', e.message);
+  } finally {
+    ocupar('#propor', false);
+  }
+};
+
+$('#salvar').onclick = async () => {
+  try {
+    await api('/api/banco', { method: 'PUT', headers: { 'content-type': 'text/plain; charset=utf-8' }, body: $('#banco-novo').value });
+    $('#revisao').hidden = true;
+    $('#texto-livre').value = '';
+    $('#pdf-input').value = '';
+    escolherPdf(null);
+    toast('Banco salvo');
+  } catch (e) {
+    mostrarErro('#erro-banco', e.message);
+  }
+};
+$('#descartar').onclick = () => { $('#revisao').hidden = true; };
+
+async function carregarBanco() {
+  try { $('#banco-atual').textContent = await (await api('/api/banco')).text(); }
+  catch (e) { $('#banco-atual').textContent = e.message; }
+}
+
+carregarHistorico();
+</script>
+</body>
+</html>

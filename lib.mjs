@@ -1,4 +1,5 @@
 // Funções puras do adaptador de currículo. Só stdlib.
+import { resolve, sep } from 'node:path';
 
 const BEGIN = '\\begin{document}';
 const END = '\\end{document}';
@@ -62,4 +63,37 @@ export function slugify(vaga) {
   const first = vaga.split(/\r?\n/).map((l) => l.trim()).find(Boolean) ?? '';
   const slug = norm(first).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50).replace(/-+$/, '');
   return slug || 'vaga';
+}
+
+export function safeJoin(base, ...parts) {
+  const raiz = resolve(base);
+  const p = resolve(raiz, ...parts);
+  return p === raiz || p.startsWith(raiz + sep) ? p : null;
+}
+
+export function listarSaidas(entradas) {
+  return entradas
+    .filter((e) => /^\d{4}-\d{2}-\d{2}-.+/.test(e.nome))
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)
+    .map(({ nome, titulo }) => ({ pasta: nome, data: nome.slice(0, 10), titulo: titulo || nome.slice(11).replace(/-/g, ' ') }));
+}
+
+export function promptBanco(instrucoes, banco, { texto, pdfPath } = {}) {
+  if (!texto && !pdfPath) throw new Error('informe texto ou pdfPath');
+  const fonte = pdfPath ? `Leia o currículo em PDF no arquivo: ${pdfPath}` : texto;
+  return `${instrucoes}\n\n<banco>\n${banco}\n</banco>\n\n<fonte>\n${fonte}\n</fonte>\n`;
+}
+
+const LOCAL = /^(localhost|127\.0\.0\.1)(:\d+)?$/;
+
+export function origemLocal({ host = '', origin } = {}) {
+  // bloqueia DNS rebinding (Host) e sites de fora disparando requisições (Origin)
+  if (!LOCAL.test(host)) return false;
+  if (origin === undefined) return true;
+  try {
+    const u = new URL(origin);
+    return u.protocol === 'http:' && LOCAL.test(u.host);
+  } catch {
+    return false;
+  }
 }
