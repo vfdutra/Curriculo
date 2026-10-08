@@ -11,6 +11,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 const arquivo = join(root, 'dados', 'vagas.json');
 const arquivoPrefs = join(root, 'base', 'preferencias.json');
 export const INTERVALO = 60 * 60_000;
+export const MAX_LOTES = 10; // ponytail: 120 vagas por ciclo; o resto fica para o próximo
 export const status = { rodando: false, proxima: null };
 
 export async function lerPreferencias() {
@@ -70,17 +71,24 @@ export async function ciclo(log = console.log) {
     });
     log(`[vagas] ${candidatas.length} lidas, ${noPerfil.length} no perfil, ${novas} novas${erros.length ? `, ${erros.length} fontes com erro` : ''}`);
 
-    const pendentes = (await lerEstado()).vagas.filter((v) => v.status === 'pendente').slice(0, LOTE);
-    if (pendentes.length) {
+    let avaliadas = 0;
+    for (let lote = 0; lote < MAX_LOTES; lote++) {
+      const pendentes = (await lerEstado()).vagas.filter((v) => v.status === 'pendente').slice(0, LOTE);
+      if (!pendentes.length) break;
+      let avals;
       try {
-        const avals = await avaliar(pendentes, prefs);
-        await atualizar((e) => { e.vagas = aplicarAvaliacoes(e.vagas, avals); });
-        log(`[vagas] ${avals.length} avaliadas`);
+        avals = await avaliar(pendentes, prefs);
       } catch (err) {
         await atualizar((e) => { e.erros.push({ fonte: 'Avaliação', msg: err.message }); });
         log(`[vagas] avaliação falhou: ${err.message}`);
+        break;
       }
+      await atualizar((e) => { e.vagas = aplicarAvaliacoes(e.vagas, avals); });
+      const ids = new Set(avals.map((a) => a.id));
+      if (!pendentes.some((v) => ids.has(v.id))) break; // nenhuma pendente recebeu avaliação: não repetir o mesmo lote
+      avaliadas += avals.length;
     }
+    if (avaliadas) log(`[vagas] ${avaliadas} avaliadas`);
     return { novas };
   } finally {
     status.rodando = false;

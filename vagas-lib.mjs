@@ -107,6 +107,7 @@ export function parseBuscaWeb(texto) {
       modalidade: MODALIDADES.includes(v.modalidade) ? v.modalidade : 'indefinida',
       publicada: v.publicada || null,
       prazo: null,
+      aberta: SIM_NAO.includes(v.aberta) ? v.aberta : 'incerto',
       restricoes: Array.isArray(v.restricoes) ? v.restricoes.map(String) : [],
       descricao: v.descricao || '',
     }));
@@ -122,6 +123,18 @@ export function casaTermo(texto, termos) {
     if (!n.replace(/\*/g, '')) return false;
     return n.endsWith('*') ? t.includes(` ${n.slice(0, -1).trim()}`) : t.includes(` ${n} `);
   });
+}
+
+const BR = ['brazil', 'brasil', 'latam', 'latin america', 'south america', 'americas', 'worldwide', 'anywhere'];
+
+// Decide no código o que o modelo erraria: Gupy/Himalayas/GitHub só listam vagas abertas, então 'aberta' e 'aceitaBrasil' saem daqui.
+export function fatos(v, agora = new Date().toISOString()) {
+  const api = !v.id.startsWith('web:');
+  const aberta = v.prazo && v.prazo < agora ? 'não' : api ? 'sim' : (SIM_NAO.includes(v.aberta) ? v.aberta : 'incerto');
+  const aceitaBrasil = v.restricoes?.length
+    ? (v.restricoes.some((r) => casaTermo(r, BR)) ? 'sim' : 'não')
+    : (api || casaTermo(v.local, ['brasil', 'brazil']) ? 'sim' : 'incerto');
+  return { aberta, aceitaBrasil };
 }
 
 // Filtro barato antes do modelo: só corta o que com certeza não serve; na dúvida deixa passar e o avaliador decide.
@@ -174,6 +187,14 @@ export function textoVaga(v) {
   return [`${v.titulo} — ${v.empresa}`, `Modalidade: ${v.modalidade} | Local: ${v.local}`, `Link: ${v.url}`, '', v.descricao].join('\n');
 }
 
+// Perfil enxuto para o avaliador: só o que muda a nota, com os cargos/empresas da experiência e sem os bullets de detalhe.
+export function perfilCompacto(banco) {
+  const secoes = banco.split(/^## /m);
+  const pega = (n) => (secoes.find((s) => s.startsWith(n)) || '').trim();
+  const cabecalhos = [...banco.matchAll(/^### (.+)$/gm)].map((m) => `- ${m[1]}`).join('\n');
+  return [pega('Formação'), `Experiência:\n${cabecalhos}`, pega('Habilidades'), pega('Idiomas'), pega('Lacunas')].filter(Boolean).join('\n\n');
+}
+
 export function parseAvaliacoes(texto) {
   const lista = jsonDaTag(texto, 'avaliacoes');
   if (!Array.isArray(lista)) throw new Error('<avaliacoes> não é uma lista');
@@ -183,14 +204,15 @@ export function parseAvaliacoes(texto) {
 const SIM_NAO = ['sim', 'não', 'incerto'];
 const textos = (x) => (Array.isArray(x) ? x.map(String) : []);
 
-export function aplicarAvaliacoes(vagas, avaliacoes) {
+export function aplicarAvaliacoes(vagas, avaliacoes, agora = new Date().toISOString()) {
   const porId = new Map(avaliacoes.map((a) => [a.id, a]));
   return vagas.map((v) => {
     const a = porId.get(v.id);
     if (!a || v.status !== 'pendente') return v;
+    const { aberta, aceitaBrasil } = fatos(v, agora);
     const avaliacao = {
-      aberta: SIM_NAO.includes(a.aberta) ? a.aberta : 'incerto',
-      aceitaBrasil: SIM_NAO.includes(a.aceitaBrasil) ? a.aceitaBrasil : 'incerto',
+      aberta,
+      aceitaBrasil,
       urlOficial: /^https?:\/\//.test(a.urlOficial || '') ? a.urlOficial : null,
       requisitos: textos(a.requisitos),
       incertezas: textos(a.incertezas),
@@ -203,8 +225,12 @@ export function aplicarAvaliacoes(vagas, avaliacoes) {
       modalidade: MODALIDADES.includes(a.modalidade) ? a.modalidade : v.modalidade,
       avaliacao,
     };
-    return a.descartar
-      ? { ...atualizada, status: 'descartada', motivo: String(a.descartar) }
+    const motivo = a.descartar
+      || (aberta === 'não' && 'Inscrições encerradas')
+      || (aceitaBrasil === 'não' && 'Não aceita candidatos do Brasil')
+      || null;
+    return motivo
+      ? { ...atualizada, status: 'descartada', motivo: String(motivo) }
       : { ...atualizada, status: 'avaliada' };
   });
 }

@@ -12,7 +12,7 @@ Você procura vagas de emprego para o Vinicius. Use só as ferramentas web_searc
 
 ## O que fazer
 1. Pesquise vagas publicadas nos últimos 3 dias no LinkedIn, Indeed, Catho e InfoJobs, combinando os `termos` com as modalidades aceitas. Exemplos: `site:linkedin.com/jobs desenvolvedor remoto`, `site:br.indeed.com developer remote`, `site:catho.com.br desenvolvedor <cidade>`, `site:infojobs.com.br desenvolvedor remoto`.
-2. Fique só com as vagas que respeitam as preferências.
+2. Fique só com as vagas que respeitam as preferências e cuja página mostra as inscrições abertas agora; só traga vaga aberta ou marque "aberta": "incerto".
 3. Para cada vaga, procure a página oficial (site de carreiras da empresa ou ATS: Gupy, Greenhouse, Lever, Ashby, Workable etc.) e use a URL oficial quando achar; senão, a do agregador.
 4. Não faça login, não preencha formulários, não abra páginas que exijam conta.
 5. Traga no máximo 15 vagas, as mais recentes primeiro. Não invente: campo que a página não diz fica null.
@@ -20,5 +20,5 @@ Você procura vagas de emprego para o Vinicius. Use só as ferramentas web_searc
 
 ## Saída (só isto é lido)
 <vagas>
-[{"url": "https://...", "fonte": "LinkedIn|Indeed|Catho|InfoJobs|Site da empresa", "titulo": "...", "empresa": "...", "local": "...", "modalidade": "remoto|hibrido|presencial|indefinida", "publicada": "AAAA-MM-DD ou null", "restricoes": ["países aceitos, se a vaga disser"], "descricao": "responsabilidades e requisitos da vaga, até 3000 caracteres"}]
+[{"url": "https://...", "fonte": "LinkedIn|Indeed|Catho|InfoJobs|Site da empresa", "titulo": "...", "empresa": "...", "local": "...", "modalidade": "remoto|hibrido|presencial|indefinida", "publicada": "AAAA-MM-DD ou null", "aberta": "sim|não|incerto", "restricoes": ["países aceitos, se a vaga disser"], "descricao": "responsabilidades e requisitos da vaga, até 3000 caracteres"}]
 </vagas>

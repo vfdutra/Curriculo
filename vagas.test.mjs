@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { textoDeHtml, parseGupy, parseHimalayas, parseGithub, parseBuscaWeb, casaTermo, passaFiltro, validarPreferencias, mesclar, textoVaga, parseAvaliacoes, aplicarAvaliacoes } from './vagas-lib.mjs';
+import { textoDeHtml, parseGupy, parseHimalayas, parseGithub, parseBuscaWeb, casaTermo, passaFiltro, validarPreferencias, mesclar, textoVaga, perfilCompacto, fatos, parseAvaliacoes, aplicarAvaliacoes } from './vagas-lib.mjs';
 
 const gupyHtml = (jobs) =>
   `<html><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { initialJobList: { data: jobs } } } })}</script></html>`;
@@ -69,7 +69,7 @@ test('parseBuscaWeb lê o JSON da tag, aceita cerca de código e descarta URL in
   assert.equal(vagas.length, 1);
   assert.deepEqual(vagas[0], {
     id: 'web:https://lever.co/x/1', fonte: 'LinkedIn', url: 'https://lever.co/x/1?src=li', titulo: 'Dev', empresa: 'X',
-    local: 'Remote', modalidade: 'remoto', publicada: '2026-10-07', prazo: null, restricoes: ['LATAM'], descricao: 'Node',
+    local: 'Remote', modalidade: 'remoto', publicada: '2026-10-07', prazo: null, aberta: 'incerto', restricoes: ['LATAM'], descricao: 'Node',
   });
   assert.equal(parseBuscaWeb('<vagas>[{"url":"https://a.com/1","modalidade":"talvez"}]</vagas>')[0].modalidade, 'indefinida');
 });
@@ -152,10 +152,20 @@ test('textoVaga começa pelo título (vira o título no histórico)', () => {
   assert.match(t, /Requisitos: PHP$/);
 });
 
+test('fatos decide aberta e aceitaBrasil no código', () => {
+  const agora = '2026-10-08T00:00:00.000Z';
+  assert.equal(fatos({ id: 'gupy:1', prazo: '2026-10-01T00:00:00.000Z' }, agora).aberta, 'não');
+  assert.equal(fatos({ id: 'himalayas:https://x', restricoes: ['United States'] }, agora).aceitaBrasil, 'não');
+  assert.equal(fatos({ id: 'himalayas:https://x', restricoes: [] }, agora).aceitaBrasil, 'sim');
+  const web = fatos({ id: 'web:https://x', aberta: 'sim', local: 'Remote', restricoes: [] }, agora);
+  assert.equal(web.aberta, 'sim');
+  assert.equal(web.aceitaBrasil, 'incerto');
+});
+
 test('parseAvaliacoes + aplicarAvaliacoes saneiam a saída do modelo', () => {
   const avals = parseAvaliacoes(`<avaliacoes>[
-    {"id":"a","empresa":"Nova","modalidade":"remoto","aberta":"sim","aceitaBrasil":"talvez","urlOficial":"javascript:x","requisitos":["PHP"],"incertezas":["Contrato?"],"aderencia":7.6,"resumo":"ok","descartar":null},
-    {"id":"b","aberta":"não","descartar":"Inscrições encerradas"},
+    {"id":"a","empresa":"Nova","modalidade":"remoto","aberta":"talvez","aceitaBrasil":"talvez","urlOficial":"javascript:x","requisitos":["PHP"],"incertezas":["Contrato?"],"aderencia":7.6,"resumo":"ok","descartar":null},
+    {"id":"b","descartar":"Vaga de design"},
     {"semId":true}
   ]</avaliacoes>`);
   assert.equal(avals.length, 2);
@@ -167,10 +177,37 @@ test('parseAvaliacoes + aplicarAvaliacoes saneiam a saída do modelo', () => {
   const [a, b, c] = aplicarAvaliacoes(vagas, avals);
   assert.equal(a.status, 'avaliada');
   assert.equal(a.empresa, 'Nova');
-  assert.deepEqual(a.avaliacao, { aberta: 'sim', aceitaBrasil: 'incerto', urlOficial: null, requisitos: ['PHP'], incertezas: ['Contrato?'], aderencia: 8, resumo: 'ok' });
+  assert.deepEqual(a.avaliacao, { aberta: 'sim', aceitaBrasil: 'sim', urlOficial: null, requisitos: ['PHP'], incertezas: ['Contrato?'], aderencia: 8, resumo: 'ok' });
   assert.equal(b.status, 'descartada');
-  assert.equal(b.motivo, 'Inscrições encerradas');
+  assert.equal(b.motivo, 'Vaga de design');
   assert.equal(c.status, 'pendente');
+});
+
+test('aplicarAvaliacoes descarta vaga vencida mesmo com descartar null', () => {
+  const vagas = [{ ...base, id: 'gupy:1', prazo: '2020-01-01T00:00:00.000Z', status: 'pendente' }];
+  const [v] = aplicarAvaliacoes(vagas, [{ id: 'gupy:1', descartar: null, aderencia: 5 }]);
+  assert.equal(v.status, 'descartada');
+  assert.equal(v.motivo, 'Inscrições encerradas');
+});
+
+test('perfilCompacto junta só as seções úteis e os títulos de experiência', () => {
+  const banco = [
+    '## Contato', 'email@x.com', '',
+    '## Formação', 'Ciência da Computação', '',
+    '## Experiência', '### Dev PHP na Acme', '- fez X', '### Dev Node na Beta', '- fez Y', '',
+    '## Habilidades', '- PHP, Node', '',
+    '## Idiomas', '- Inglês avançado', '',
+    '## Lacunas', '- Kubernetes',
+  ].join('\n');
+  const p = perfilCompacto(banco);
+  assert.match(p, /Formação/);
+  assert.match(p, /- Dev PHP na Acme/);
+  assert.match(p, /- Dev Node na Beta/);
+  assert.match(p, /Habilidades/);
+  assert.match(p, /Idiomas/);
+  assert.match(p, /Lacunas/);
+  assert.doesNotMatch(p, /Contato/);
+  assert.doesNotMatch(p, /- fez X/);
 });
 
 test('parseAvaliacoes aceita uma lista JSON por linha', () => {

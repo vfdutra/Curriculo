@@ -43,9 +43,10 @@ O servidor (`node servidor.mjs`) busca vagas ao subir e depois a cada 1 h. Elas 
   - Himalayas (remotas).
   - Issues de `backend-br/vagas`, `frontendbr/vagas` e `react-brasil/vagas`.
   - Busca web no Command Code: LinkedIn, Indeed, Catho e InfoJobs, sem scraping e preferindo o link oficial.
-- **Avaliação** (Command Code com `deepseek/deepseek-v4.1-flash`, 8 vagas por ciclo, sem `--yolo`, ou seja, sem escrita nem shell):
-  - Abre a página oficial e confirma se as inscrições estão abertas e se aceita quem mora no Brasil.
+- **Avaliação** (Command Code com `deepseek/deepseek-v4.1-flash-fast`, reserva `gpt-6-luna`, lotes de 12 até a fila esvaziar, no máximo 120 vagas por ciclo, sem ferramentas — o modelo só lê o texto, sem `--yolo`):
+  - Avalia a partir de um perfil compacto (formação, títulos de experiência, habilidades, idiomas e lacunas), não do `banco.md` inteiro.
   - Lista os requisitos, marca o que não está claro e dá nota de aderência ao `base/banco.md`.
+  - Inscrição aberta e aceita-Brasil são decididos no código: Gupy, Himalayas e GitHub já listam só vagas abertas; prazos vencidos e restrições de país são checados. Resultados da busca web vêm confirmados pela própria busca.
   - Vagas que claramente não servem são descartadas com o motivo.
 - **Gerar currículo** numa vaga roda o adaptador (Claude) com a descrição dela e lembra a pasta gerada.
 - O estado fica em `dados/vagas.json`, fora do git.
