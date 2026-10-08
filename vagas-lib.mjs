@@ -148,6 +148,14 @@ export function passaFiltro(v, p) {
   return true; // indefinida
 }
 
+// Idade em dias desde a publicação (ou desde que encontramos, se a fonte não informa a data).
+export function idadeDias(v, agora = new Date().toISOString()) {
+  const base = Date.parse(v.publicada || '') || Date.parse(v.encontrada || '') || Date.parse(agora);
+  return Math.max(0, Math.floor((Date.parse(agora) - base) / 86_400_000));
+}
+
+export const recente = (v, p, agora) => idadeDias(v, agora) <= (p.diasMaximos ?? 5);
+
 const LISTAS_PREFS = ['termos', 'area', 'excluir', 'aceitarNivel', 'paisesRemoto', 'cidades'];
 
 export function validarPreferencias(p) {
@@ -158,6 +166,8 @@ export function validarPreferencias(p) {
     if (!Array.isArray(p[k])) throw new Error(`"${k}" precisa ser uma lista.`);
     out[k] = [...new Set(p[k].map((x) => String(x).trim()).filter(Boolean))];
   }
+  out.diasMaximos = p.diasMaximos === undefined ? 5 : Number(p.diasMaximos);
+  if (!Number.isInteger(out.diasMaximos) || out.diasMaximos < 1 || out.diasMaximos > 60) throw new Error('Informe o prazo em dias (1 a 60).');
   if (!out.termos.length) throw new Error('Informe ao menos um termo de busca.');
   if (!out.area.length) throw new Error('Informe ao menos uma palavra de área.');
   if (!Object.values(out.modalidades).some(Boolean)) throw new Error('Marque ao menos uma modalidade.');
@@ -168,18 +178,70 @@ export function validarPreferencias(p) {
 const soLetras = (s) => semAcento(s).replace(/[^a-z0-9]/g, '');
 export const chave = (v) => `${soLetras(v.empresa)}|${soLetras(v.titulo)}`;
 
-// A mesma vaga aparece em fontes diferentes (Gupy e LinkedIn, backend-br e frontendbr): dedup por id e por empresa+título.
+// Palavras de razão social que não distinguem empresas ("Acme Tecnologia Ltda" = "ACME").
+const PALAVRAS_EMPRESA = ['ltda', 'sa', 's/a', 'inc', 'ltd', 'llc', 'me', 'eireli', 'tecnologia', 'technologies', 'technology', 'tech', 'brasil', 'brazil', 'group', 'grupo'];
+const RE_EMPRESA = new RegExp(`\\b(?:${PALAVRAS_EMPRESA.join('|')})\\b`, 'g');
+const normalizarEmpresa = (nome = '') => (nome === '?' ? '' : semAcento(nome).replace(RE_EMPRESA, ' ').replace(/[^a-z0-9]/g, ''));
+
+const STOP_TITULO = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'para', 'com', 'a', 'o', 'the', 'of', 'for', 'and', 'with', 'to', 'in', 'vaga', 'vagas', 'remoto', 'remote', 'hibrido', 'hybrid', 'presencial', 'onsite', 'i', 'ii', 'iii']);
+const CURTOS = new Set(['ai', 'ia', 'ml']);
+const NIVEIS = new Map([['jr', 'junior'], ['junior', 'junior'], ['pl', 'pleno'], ['pleno', 'pleno'], ['mid', 'pleno'], ['middle', 'pleno'], ['sr', 'senior'], ['senior', 'senior']]);
+
+// Assinatura para reconhecer a mesma vaga em sites diferentes: empresa normalizada + palavras significativas do título + nível.
+export function assinatura(v) {
+  const alvo = normalizarEmpresa(v.empresa || '');
+  let titulo = semAcento(v.titulo || '').replace(/\[[^\]]*\]/g, ' ');
+  // "(Android)" e "(Java)" guardam a tecnologia: mantém o conteúdo, só some com a pontuação
+  const m = titulo.match(/(?:\s+(?:na|at)\s+|\s+[-|]\s+)([^|\n]+?)\s*$/);
+  const empresa = alvo || (m ? normalizarEmpresa(m[1]) : ''); // empresa desconhecida: o sufixo é a empresa
+  if (m && (!alvo || normalizarEmpresa(m[1]) === alvo)) titulo = titulo.slice(0, m.index);
+  const palavras = new Set();
+  const nivel = new Set();
+  for (const p of titulo.replace(/[^a-z0-9]+/g, ' ').split(' ')) {
+    if (!p) continue;
+    if (NIVEIS.has(p)) nivel.add(NIVEIS.get(p));
+    else if (!STOP_TITULO.has(p) && (p.length >= 2 || CURTOS.has(p))) palavras.add(p);
+  }
+  return { empresa, palavras, nivel };
+}
+
+// ponytail: só junta entre sites diferentes; nível (pleno x júnior) separa vagas; 75% de título com empresa igual, 90% quando a empresa é desconhecida.
+export function mesmaVaga(a, b) {
+  if (a.fonte === b.fonte) return false; // duas vagas no mesmo site são aberturas distintas
+  const A = assinatura(a);
+  const B = assinatura(b);
+  if (!A.palavras.size || !B.palavras.size) return false;
+  if (A.nivel.size && B.nivel.size && ![...A.nivel].some((n) => B.nivel.has(n))) return false;
+  const comuns = [...A.palavras].filter((p) => B.palavras.has(p)).length;
+  const jaccard = comuns / new Set([...A.palavras, ...B.palavras]).size;
+  if (A.empresa && B.empresa) return A.empresa === B.empresa && jaccard >= 0.75;
+  return jaccard >= 0.9 && Math.min(A.palavras.size, B.palavras.size) >= 3;
+}
+
+// Já candidatado? cobre o e-mail enviado antes deste campo existir.
+export function aplicada(v) {
+  return v.aplicadaEm || v.candidatura?.enviadaEm || null;
+}
+
+// A mesma vaga aparece em fontes diferentes (Gupy e LinkedIn, backend-br e frontendbr): dedup por id, empresa+título e mesmaVaga.
+// ponytail: comparação O(n·m), ok para algumas centenas de vagas; indexar por empresa se crescer.
 export function mesclar(existentes, candidatas, agora = new Date().toISOString()) {
-  const ids = new Set(existentes.map((v) => v.id));
-  const chaves = new Set(existentes.map(chave));
+  const copias = existentes.map((v) => ({ ...v })); // não mutar as vagas já guardadas
   const novas = [];
+  const registrar = (alvo, v) => {
+    if (alvo.url === v.url) return;
+    const outras = alvo.outras || (alvo.outras = []);
+    if (!outras.some((o) => o.url === v.url)) outras.push({ fonte: v.fonte, url: v.url });
+  };
   for (const v of candidatas) {
-    if (ids.has(v.id) || chaves.has(chave(v))) continue;
-    ids.add(v.id);
-    chaves.add(chave(v));
+    const igual = [...copias, ...novas].find((x) => x.id === v.id || chave(x) === chave(v) || mesmaVaga(v, x));
+    if (igual) {
+      registrar(igual, v); // mesma vaga em outro site: não duplica, só lembra o link
+      continue;
+    }
     novas.push({ ...v, encontrada: agora, status: 'pendente' });
   }
-  return { todas: [...novas, ...existentes], novas };
+  return { todas: [...novas, ...copias], novas };
 }
 
 // Entrada do gerar(): a 1ª linha vira o título no histórico.

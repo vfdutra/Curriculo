@@ -5,7 +5,7 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FONTES } from './fontes.mjs';
 import { avaliar, LOTE } from './avaliar.mjs';
-import { passaFiltro, mesclar, aplicarAvaliacoes, validarPreferencias } from './vagas-lib.mjs';
+import { passaFiltro, mesclar, aplicarAvaliacoes, validarPreferencias, recente, aplicada } from './vagas-lib.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const arquivo = join(root, 'dados', 'vagas.json');
@@ -61,7 +61,8 @@ export async function ciclo(log = console.log) {
       if (r.status === 'fulfilled') candidatas.push(...r.value);
       else erros.push({ fonte: nomes[i], msg: String(r.reason?.message || r.reason) });
     });
-    const noPerfil = candidatas.filter((v) => passaFiltro(v, prefs));
+    const noPerfil = candidatas.filter((v) => passaFiltro(v, prefs) && recente(v, prefs));
+    const antigas = candidatas.filter((v) => passaFiltro(v, prefs) && !recente(v, prefs)).length;
     const novas = await atualizar((e) => {
       const m = mesclar(e.vagas, noPerfil);
       e.vagas = m.todas;
@@ -69,11 +70,11 @@ export async function ciclo(log = console.log) {
       e.erros = erros;
       return m.novas.length;
     });
-    log(`[vagas] ${candidatas.length} lidas, ${noPerfil.length} no perfil, ${novas} novas${erros.length ? `, ${erros.length} fontes com erro` : ''}`);
+    log(`[vagas] ${candidatas.length} lidas, ${noPerfil.length} no perfil, ${novas} novas, ${antigas} antigas${erros.length ? `, ${erros.length} fontes com erro` : ''}`);
 
     let avaliadas = 0;
     for (let lote = 0; lote < MAX_LOTES; lote++) {
-      const pendentes = (await lerEstado()).vagas.filter((v) => v.status === 'pendente').slice(0, LOTE);
+      const pendentes = (await lerEstado()).vagas.filter((v) => v.status === 'pendente' && recente(v, prefs) && !aplicada(v)).slice(0, LOTE);
       if (!pendentes.length) break;
       let avals;
       try {

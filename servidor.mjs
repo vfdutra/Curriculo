@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { gerar } from './adaptar.mjs';
 import { proporBanco } from './banco.mjs';
 import { iniciarBuscador, ciclo, lerEstado, atualizar, status as statusBuscador, lerPreferencias, salvarPreferencias } from './buscador.mjs';
-import { textoVaga, passaFiltro, validarPreferencias } from './vagas-lib.mjs';
+import { textoVaga, passaFiltro, validarPreferencias, idadeDias, recente, aplicada } from './vagas-lib.mjs';
 import { safeJoin, listarSaidas, origemLocal } from './lib.mjs';
 import { emailsCandidatura } from './email-lib.mjs';
 import { configEmail, prepararEmail, enviarCandidatura } from './candidatura.mjs';
@@ -118,12 +118,16 @@ const rotas = {
   'GET /api/vagas': async (req, res) => {
     const [e, prefs] = await Promise.all([lerEstado(), lerPreferencias()]);
     const ativas = e.vagas.filter((v) => v.status !== 'descartada');
-    // e-mails de candidatura calculados na hora (não ficam salvos no json)
-    const vagas = ativas.filter((v) => passaFiltro(v, prefs)).map((v) => ({ ...v, emails: emailsCandidatura(v.descricao) }));
+    // e-mails de candidatura calculados na hora (não ficam salvos no json); aplicadas ficam sempre visíveis
+    const vagas = ativas
+      .filter((v) => aplicada(v) || (passaFiltro(v, prefs) && recente(v, prefs)))
+      .map((v) => ({ ...v, emails: emailsCandidatura(v.descricao), aplicadaEm: aplicada(v), idade: idadeDias(v) }));
     json(res, 200, {
       ...e, vagas,
       descartadas: e.vagas.length - ativas.length,
-      ocultas: ativas.length - vagas.length,
+      ocultas: ativas.filter((v) => !aplicada(v) && !passaFiltro(v, prefs)).length,
+      antigas: ativas.filter((v) => !aplicada(v) && passaFiltro(v, prefs) && !recente(v, prefs)).length,
+      diasMaximos: prefs.diasMaximos,
       rodando: statusBuscador.rodando,
       proxima: statusBuscador.proxima,
     });
@@ -196,7 +200,7 @@ async function enviarEmailVaga(req, res, vaga, marcar) {
   enviando.add(vaga.id);
   try {
     const enviadaEm = await enviarCandidatura(vaga, corpo);
-    await marcar({ candidatura: { rascunho: { para: corpo.para, assunto: corpo.assunto, corpo: corpo.corpo }, para: corpo.para, enviadaEm } });
+    await marcar({ candidatura: { rascunho: { para: corpo.para, assunto: corpo.assunto, corpo: corpo.corpo }, para: corpo.para, enviadaEm }, aplicadaEm: enviadaEm, aplicadaVia: 'e-mail' });
     json(res, 200, { enviadaEm });
   } finally {
     enviando.delete(vaga.id);
@@ -214,6 +218,13 @@ async function acaoVaga(req, res, id, acao) {
   }
   if (acao === 'email-preparar') return prepararEmailVaga(req, res, vaga, marcar);
   if (acao === 'email-enviar') return enviarEmailVaga(req, res, vaga, marcar);
+  if (acao === 'aplicar') {
+    const { desfazer } = await lerJson(req);
+    // desfazer só limpa a marca manual: o e-mail enviado continua em candidatura.enviadaEm (não dá para reenviar)
+    const aplicadaEm = desfazer ? null : new Date().toISOString();
+    await marcar({ aplicadaEm, aplicadaVia: desfazer ? null : 'manual' });
+    return json(res, 200, { aplicadaEm });
+  }
   if (vaga.pasta) return json(res, 200, { pasta: vaga.pasta, avisos: [], status: 'ok' });
   return comClaude(res, async () => {
     const r = await gerar(textoVaga(vaga), () => {});
@@ -236,7 +247,7 @@ createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const rota = rotas[`${req.method} ${url.pathname}`];
     if (rota) return await rota(req, res);
-    const v = req.method === 'POST' && url.pathname.match(/^\/api\/vagas\/([^/]+)\/(gerar|descartar|email-preparar|email-enviar)$/);
+    const v = req.method === 'POST' && url.pathname.match(/^\/api\/vagas\/([^/]+)\/(gerar|descartar|email-preparar|email-enviar|aplicar)$/);
     if (v) return await acaoVaga(req, res, decodeURIComponent(v[1]), v[2]);
     const m = req.method === 'GET' && url.pathname.match(/^\/saidas\/([^/]+)\/([^/]+)$/);
     if (m) return await servirSaida(res, decodeURIComponent(m[1]), decodeURIComponent(m[2]));

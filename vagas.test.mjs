@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { textoDeHtml, parseGupy, parseHimalayas, parseGithub, parseBuscaWeb, casaTermo, passaFiltro, validarPreferencias, mesclar, textoVaga, perfilCompacto, fatos, parseAvaliacoes, aplicarAvaliacoes } from './vagas-lib.mjs';
+import { textoDeHtml, parseGupy, parseHimalayas, parseGithub, parseBuscaWeb, casaTermo, passaFiltro, validarPreferencias, mesclar, textoVaga, perfilCompacto, fatos, parseAvaliacoes, aplicarAvaliacoes, idadeDias, recente, mesmaVaga, aplicada } from './vagas-lib.mjs';
 
 const gupyHtml = (jobs) =>
   `<html><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { initialJobList: { data: jobs } } } })}</script></html>`;
@@ -213,4 +213,82 @@ test('perfilCompacto junta só as seções úteis e os títulos de experiência'
 test('parseAvaliacoes aceita uma lista JSON por linha', () => {
   const avals = parseAvaliacoes('<avaliacoes>\n[{"id":"a","aderencia":5}]\n[{"id":"b","aderencia":7}]\n</avaliacoes>');
   assert.deepEqual(avals.map((a) => a.id), ['a', 'b']);
+});
+
+test('validarPreferencias aceita diasMaximos (padrão 5) e recusa fora de 1–60', () => {
+  assert.equal(validarPreferencias({ ...PREFS }).diasMaximos, 5);
+  assert.equal(validarPreferencias({ ...PREFS, diasMaximos: 3 }).diasMaximos, 3);
+  for (const ruim of [0, 61, 'abc']) assert.throws(() => validarPreferencias({ ...PREFS, diasMaximos: ruim }), /prazo em dias/);
+});
+
+test('idadeDias e recente medem a idade desde a publicação', () => {
+  const agora = '2026-10-08T00:00:00.000Z';
+  assert.equal(idadeDias({ publicada: '2026-10-06T00:00:00.000Z' }, agora), 2);
+  assert.equal(idadeDias({ publicada: null, encontrada: '2026-10-06T00:00:00.000Z' }, agora), 2);
+  assert.equal(recente({ publicada: '2026-10-03T00:00:00.000Z' }, { diasMaximos: 5 }, agora), true);
+  assert.equal(recente({ publicada: '2026-10-02T00:00:00.000Z' }, { diasMaximos: 5 }, agora), false);
+});
+
+test('mesmaVaga junta a mesma vaga com título e razão social diferentes', () => {
+  assert.equal(mesmaVaga(
+    { empresa: 'Acme Tecnologia Ltda', titulo: '[Remoto] Desenvolvedor Full Stack Pleno', fonte: 'Gupy' },
+    { empresa: 'ACME', titulo: 'Desenvolvedor Full-Stack', fonte: 'LinkedIn' },
+  ), true);
+  assert.equal(mesmaVaga(
+    { empresa: 'Acme', titulo: 'Desenvolvedor Front-end React', fonte: 'Gupy' },
+    { empresa: 'Acme', titulo: 'Desenvolvedor Back-end Java', fonte: 'LinkedIn' },
+  ), false);
+  assert.equal(mesmaVaga(
+    { empresa: 'Acme', titulo: 'Desenvolvedor Python Django', fonte: 'Gupy' },
+    { empresa: 'Beta', titulo: 'Desenvolvedor Python Django', fonte: 'LinkedIn' },
+  ), false);
+  assert.equal(mesmaVaga(
+    { empresa: '?', titulo: '[Remoto] Desenvolvedor Python Django na Acme', fonte: 'GitHub backend-br/vagas' },
+    { empresa: 'Acme', titulo: 'Desenvolvedor Python Django', fonte: 'LinkedIn' },
+  ), true);
+  assert.equal(mesmaVaga(
+    { empresa: 'Stefanini', titulo: 'Analista Desenvolvedor Pleno (Full Stack)', fonte: 'Gupy' },
+    { empresa: 'Stefanini Brasil', titulo: 'Analista Desenvolvedor PL - Full Stack', fonte: 'LinkedIn' },
+  ), true);
+});
+
+test('mesmaVaga não junta vagas diferentes só por terem título parecido', () => {
+  assert.equal(mesmaVaga(
+    { empresa: 'SoftDesign', titulo: 'Software Engineer (Android)', fonte: 'Gupy' },
+    { empresa: 'SoftDesign', titulo: 'Software Engineer (Java)', fonte: 'Gupy' },
+  ), false);
+  assert.equal(mesmaVaga(
+    { empresa: 'Quality Digital', titulo: 'ANALISTA DE QUALIDADE DE SOFTWARE (QA) PLENO', fonte: 'Gupy' },
+    { empresa: 'Quality Digital', titulo: 'ANALISTA DE QUALIDADE DE SOFTWARE (QA) JUNIOR', fonte: 'Gupy' },
+  ), false);
+  assert.equal(mesmaVaga(
+    { empresa: 'FCamara', titulo: 'Desenvolvedor Mobile Frontend Android', fonte: 'Himalayas' },
+    { empresa: 'FCamara', titulo: 'Desenvolvedor Mobile Frontend IOS', fonte: 'Himalayas' },
+  ), false);
+  assert.equal(mesmaVaga(
+    { empresa: 'FCamara', titulo: 'Desenvolvedor Mobile Frontend Android', fonte: 'Himalayas' },
+    { empresa: 'FCamara', titulo: 'Desenvolvedor Mobile Frontend IOS', fonte: 'LinkedIn' },
+  ), false);
+  assert.equal(mesmaVaga(
+    { empresa: '?', titulo: '[Remoto] Desenvolvedor(a) Full Stack Pleno (Python / TypeScript / IA) na Ártemis', fonte: 'GitHub backend-br/vagas' },
+    { empresa: 'SoftExpert', titulo: 'Desenvolvedor(a) Full Stack Júnior (PHP/React)', fonte: 'LinkedIn' },
+  ), false);
+});
+
+test('mesclar guarda os outros sites em outras, sem duplicar nem mutar a vaga antiga', () => {
+  const gupy = { empresa: 'Acme Tecnologia Ltda', titulo: '[Remoto] Desenvolvedor Full Stack Pleno', id: 'gupy:9', url: 'https://acme.gupy.io/job/9', fonte: 'Gupy' };
+  const linkedin = { empresa: 'ACME', titulo: 'Desenvolvedor Full-Stack', id: 'web:https://linkedin.com/jobs/1', url: 'https://linkedin.com/jobs/1', fonte: 'LinkedIn' };
+  const original = [gupy];
+  const { todas, novas } = mesclar(original, [linkedin], '2026-10-08T00:00:00.000Z');
+  assert.equal(novas.length, 0);
+  assert.deepEqual(todas[0].outras, [{ fonte: 'LinkedIn', url: 'https://linkedin.com/jobs/1' }]);
+  assert.equal(original[0].outras, undefined); // a vaga já guardada não é mutada
+  const { todas: denovo } = mesclar(todas, [linkedin], '2026-10-08T00:00:00.000Z');
+  assert.deepEqual(denovo[0].outras, [{ fonte: 'LinkedIn', url: 'https://linkedin.com/jobs/1' }]);
+});
+
+test('aplicada usa aplicadaEm, cai em candidatura.enviadaEm ou é null', () => {
+  assert.equal(aplicada({ aplicadaEm: '2026-10-08T00:00:00.000Z' }), '2026-10-08T00:00:00.000Z');
+  assert.equal(aplicada({ candidatura: { enviadaEm: '2026-10-07T00:00:00.000Z' } }), '2026-10-07T00:00:00.000Z');
+  assert.equal(aplicada({}), null);
 });

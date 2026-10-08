@@ -62,6 +62,10 @@
   .filtros { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
   .filtro { min-height: 44px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font: 500 14px var(--sans); cursor: pointer; }
   .filtro[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .toolbar input[type="search"], .toolbar select { min-height: 44px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-2); color: var(--text); font: 400 14px var(--sans); outline: none; }
+  .toolbar input[type="search"] { flex: 1 1 240px; min-width: 0; }
+  .toolbar input[type="search"]:focus, .toolbar select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(67,97,255,.35); }
 
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; margin-bottom: 16px; }
   .vazio { color: var(--muted); font-size: 13px; }
@@ -95,6 +99,9 @@
   .meta { font-family: var(--mono); font-size: 12px; color: var(--muted); }
   .vaga h3 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 24px; line-height: 1.15; letter-spacing: -.015em; }
   .vaga-empresa { margin: 0; color: var(--text-2); }
+  .tambem { margin: 0; font-size: 13px; color: var(--muted); }
+  .tambem a { display: inline-flex; align-items: center; gap: 3px; color: var(--text); text-decoration: none; }
+  .tambem a:hover { text-decoration: underline; }
   .vaga-resumo { margin: 0; color: #D7DCD8; max-width: 68ch; }
   .chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
   .chips li { border: 1px solid var(--border); background: var(--surface-2); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
@@ -230,12 +237,30 @@
 
     <div class="colunas">
       <div class="col-lista">
+        <div class="toolbar" role="group" aria-label="Filtrar vagas">
+          <input type="search" id="busca-vagas" placeholder="Buscar cargo, empresa, requisito…" aria-label="Buscar vagas">
+          <select id="filtro-modalidade" aria-label="Modalidade">
+            <option value="">Todas as modalidades</option>
+            <option value="remoto">Remoto</option>
+            <option value="hibrido">Híbrido</option>
+            <option value="presencial">Presencial</option>
+          </select>
+          <select id="filtro-site" aria-label="Site"><option value="">Todos os sites</option></select>
+          <select id="filtro-idade" aria-label="Publicada">
+            <option value="">Qualquer data</option>
+            <option value="hoje">Hoje</option>
+            <option value="3">Até 3 dias</option>
+            <option value="5">Até 5 dias</option>
+          </select>
+          <button type="button" class="btn-descartar" id="limpar-filtros" hidden>Limpar filtros</button>
+        </div>
         <div class="filtros" role="group" aria-label="Mostrar">
           <button type="button" class="filtro" data-filtro="todas" aria-pressed="true">Todas</button>
           <button type="button" class="filtro" data-filtro="novas" aria-pressed="false">Novas</button>
           <button type="button" class="filtro" data-filtro="altas" aria-pressed="false">Aderência 8+</button>
           <button type="button" class="filtro" data-filtro="curriculo" aria-pressed="false">Com currículo</button>
           <button type="button" class="filtro" data-filtro="email" aria-pressed="false">Por e-mail</button>
+          <button type="button" class="filtro" data-filtro="aplicadas" aria-pressed="false">Aplicadas</button>
         </div>
         <div id="vagas-lista"></div>
       </div>
@@ -254,6 +279,7 @@
             </fieldset>
             <label class="campo">Cidades (híbrido e presencial)<input name="cidades"></label>
             <label class="campo">Remoto: aceitar candidatos de<input name="paisesRemoto"></label>
+            <label class="campo">Prazo máximo (dias desde a publicação)<input name="diasMaximos" type="number" min="1" max="60" step="1"></label>
             <details class="mais">
               <summary>Todas as opções</summary>
               <div class="mais-corpo">
@@ -583,31 +609,98 @@ const quando = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle
 let gerandoVaga = false; // não re-renderiza a lista no meio de uma geração (o botão perderia o spinner)
 let filtro = 'todas';
 let ultimas = { vagas: [], vistas: '' };
+let busca = '';
+let fModalidade = '';
+let fSite = '';
+let fIdade = '';
 const FILTROS = {
-  todas: () => true,
-  novas: (v) => v.encontrada > ultimas.vistas,
-  altas: (v) => (v.avaliacao?.aderencia ?? 0) >= 8,
-  curriculo: (v) => !!v.pasta,
-  email: (v) => v.emails?.length > 0,
+  todas: (v) => !v.aplicadaEm,
+  novas: (v) => !v.aplicadaEm && v.encontrada > ultimas.vistas,
+  altas: (v) => !v.aplicadaEm && (v.avaliacao?.aderencia ?? 0) >= 8,
+  curriculo: (v) => !v.aplicadaEm && !!v.pasta,
+  email: (v) => !v.aplicadaEm && (v.emails?.length > 0),
+  aplicadas: (v) => !!v.aplicadaEm,
 };
 
-function rotulosFiltro() {
-  const n = { todas: ultimas.vagas.length, novas: 0, altas: 0, curriculo: 0, email: 0 };
+const semAcento = (s) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+
+function passaToolbar(v) {
+  if (busca) {
+    const alvo = semAcento([
+      v.titulo, v.empresa, v.local,
+      (v.avaliacao?.requisitos || []).join(' '),
+      v.avaliacao?.resumo || '',
+      v.descricao || '',
+    ].filter(Boolean).join(' '));
+    for (const termo of busca.split(/\s+/)) if (termo && !alvo.includes(semAcento(termo))) return false;
+  }
+  if (fModalidade && v.modalidade !== fModalidade) return false;
+  if (fSite && ![v.fonte, ...(v.outras || []).map((o) => o.fonte)].includes(fSite)) return false;
+  if (fIdade) {
+    if (typeof v.idade !== 'number') return false;
+    if (fIdade === 'hoje' && v.idade !== 0) return false;
+    if (fIdade === '3' && v.idade > 3) return false;
+    if (fIdade === '5' && v.idade > 5) return false;
+  }
+  return true;
+}
+
+function atualizarSites() {
+  const sel = $('#filtro-site');
+  const sites = new Set();
   for (const v of ultimas.vagas) {
+    if (v.fonte) sites.add(v.fonte);
+    for (const o of v.outras || []) if (o && o.fonte) sites.add(o.fonte);
+  }
+  const ordenado = [...sites].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const atual = sel.value;
+  sel.innerHTML = '<option value="">Todos os sites</option>' + ordenado.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  sel.value = ordenado.includes(atual) ? atual : '';
+  fSite = sel.value;
+}
+
+function atualizarLimpar() {
+  $('#limpar-filtros').hidden = !(busca || fModalidade || fSite || fIdade);
+}
+
+function rotulosFiltro() {
+  const n = { todas: 0, novas: 0, altas: 0, curriculo: 0, email: 0, aplicadas: 0 };
+  for (const v of ultimas.vagas) {
+    if (!passaToolbar(v)) continue;
+    if (FILTROS.todas(v)) n.todas++;
     if (FILTROS.novas(v)) n.novas++;
     if (FILTROS.altas(v)) n.altas++;
     if (FILTROS.curriculo(v)) n.curriculo++;
     if (FILTROS.email(v)) n.email++;
+    if (FILTROS.aplicadas(v)) n.aplicadas++;
   }
   $('[data-filtro="todas"]').textContent = `Todas · ${n.todas}`;
   $('[data-filtro="novas"]').textContent = `Novas · ${n.novas}`;
   $('[data-filtro="altas"]').textContent = `Aderência 8+ · ${n.altas}`;
   $('[data-filtro="curriculo"]').textContent = `Com currículo · ${n.curriculo}`;
   $('[data-filtro="email"]').textContent = `Por e-mail · ${n.email}`;
+  $('[data-filtro="aplicadas"]').textContent = `Aplicadas · ${n.aplicadas}`;
 }
 for (const b of document.querySelectorAll('[data-filtro]')) b.onclick = () => {
   filtro = b.dataset.filtro;
   for (const o of document.querySelectorAll('[data-filtro]')) o.setAttribute('aria-pressed', String(o.dataset.filtro === filtro));
+  renderVagas(ultimas.vagas, ultimas.vistas);
+};
+
+let tBusca;
+$('#busca-vagas').oninput = (e) => {
+  clearTimeout(tBusca);
+  tBusca = setTimeout(() => { busca = e.target.value.trim(); renderVagas(ultimas.vagas, ultimas.vistas); }, 150);
+};
+$('#filtro-modalidade').onchange = (e) => { fModalidade = e.target.value; renderVagas(ultimas.vagas, ultimas.vistas); };
+$('#filtro-site').onchange = (e) => { fSite = e.target.value; renderVagas(ultimas.vagas, ultimas.vistas); };
+$('#filtro-idade').onchange = (e) => { fIdade = e.target.value; renderVagas(ultimas.vagas, ultimas.vistas); };
+$('#limpar-filtros').onclick = () => {
+  busca = ''; fModalidade = ''; fSite = ''; fIdade = '';
+  $('#busca-vagas').value = '';
+  $('#filtro-modalidade').value = '';
+  $('#filtro-site').value = '';
+  $('#filtro-idade').value = '';
   renderVagas(ultimas.vagas, ultimas.vistas);
 };
 
@@ -617,6 +710,7 @@ async function carregarVagas() {
   catch (e) { $('#vagas-status').textContent = e.message; return; }
   const vistas = lerVistas();
   ultimas = { vagas: d.vagas, vistas };
+  atualizarSites();
   const novas = d.vagas.filter((v) => v.encontrada > vistas).length;
   $('#cont-novas').textContent = `${novas} novas`;
   $('#cont-novas').hidden = !novas;
@@ -626,7 +720,7 @@ async function carregarVagas() {
     : `${d.vagas.length} vagas abertas pro seu perfil.`;
   $('#vagas-status').textContent = d.rodando
     ? 'Buscando agora… (alguns minutos)'
-    : `Última busca ${quando(d.ultimaBusca)}${d.ocultas ? ` · ${d.ocultas} ocultas pelas preferências` : ''}`;
+    : `Última busca ${quando(d.ultimaBusca)}${d.ocultas ? ` · ${d.ocultas} ocultas pelas preferências` : ''}${d.antigas > 0 ? ` · ${d.antigas} mais velhas que ${d.diasMaximos} dias ocultas` : ''}`;
   $('#proxima-busca').textContent = d.rodando ? 'Buscando…' : `Próxima busca ${quando(d.proxima)}`;
   $('#num-vagas').textContent = d.vagas.length;
   $('#num-avaliadas').textContent = d.vagas.filter((v) => v.avaliacao).length;
@@ -641,12 +735,13 @@ async function carregarVagas() {
 
 function renderVagas(vagas, vistas) {
   rotulosFiltro();
+  atualizarLimpar();
   const lista = $('#vagas-lista');
   if (!vagas.length) {
     lista.innerHTML = '<div class="card vazio">Nenhuma vaga ainda. A busca roda quando o servidor sobe e depois a cada hora.</div>';
     return;
   }
-  const mostrar = vagas.filter(FILTROS[filtro] || FILTROS.todas);
+  const mostrar = vagas.filter(FILTROS[filtro] || FILTROS.todas).filter(passaToolbar);
   if (!mostrar.length) {
     lista.innerHTML = '<div class="card vazio">Nenhuma vaga neste filtro.</div>';
     return;
@@ -654,10 +749,18 @@ function renderVagas(vagas, vistas) {
   lista.innerHTML = '';
   mostrar.forEach((v, i) => {
     const a = v.avaliacao;
+    const aplicada = !!v.aplicadaEm;
     const classe = a && a.aderencia >= 9 ? 'alta' : a && a.aderencia >= 7 ? 'media' : 'baixa';
     const modalidade = ROTULO_MOD[v.modalidade] || v.modalidade || '';
-    const meta = `${modalidade} · ${v.local} · ${v.fonte} · achada ${quando(v.encontrada)}`
+    const idade = typeof v.idade === 'number'
+      ? `publicada ${v.idade === 0 ? 'hoje' : v.idade === 1 ? 'há 1 dia' : `há ${v.idade} dias`}`
+      : `achada ${quando(v.encontrada)}`;
+    const meta = `${modalidade} · ${v.local} · Achada em: ${v.fonte} · ${idade}`
       + (v.prazo ? ` · inscrições até ${new Date(v.prazo).toLocaleDateString('pt-BR')}` : '');
+    const outras = (v.outras || []).filter((o) => o && o.fonte);
+    const tambem = outras.length
+      ? `<p class="tambem">Também em: ${outras.map((o) => `<a href="${esc(o.url)}" target="_blank" rel="noopener noreferrer">${esc(o.fonte)}${SVG_SETA}</a>`).join(', ')}</p>`
+      : '';
     const confirmar = [
       a?.aberta === 'incerto' && 'Não deu para confirmar se as inscrições estão abertas',
       a?.aceitaBrasil === 'incerto' && 'Não está claro se aceita quem mora no Brasil',
@@ -665,11 +768,12 @@ function renderVagas(vagas, vistas) {
     ].filter(Boolean);
     const el = document.createElement('article');
     el.className = 'card vaga';
-    const emailAcao = v.emails?.length
-      ? (v.candidatura?.enviadaEm
-        ? `<span class="enviada">${SVG_CHECK}Enviada em ${new Date(v.candidatura.enviadaEm).toLocaleDateString('pt-BR')} para ${esc(v.candidatura.para || '')}</span>`
-        : `<button class="btn" id="ev-${i}">Candidatar por e-mail</button>`)
-      : '';
+    const situacao = aplicada
+      ? `<span class="enviada">${SVG_CHECK}Candidatura feita em ${new Date(v.aplicadaEm).toLocaleDateString('pt-BR')}${v.aplicadaVia === 'e-mail' && v.candidatura?.para ? ` por e-mail para ${esc(v.candidatura.para)}` : ''}</span>`
+      : (v.emails?.length ? `<button class="btn" id="ev-${i}">Candidatar por e-mail</button>` : '');
+    const acaoFinal = aplicada
+      ? (v.candidatura?.enviadaEm ? '' : `<button class="btn-descartar" id="ap-${i}">Desfazer</button>`) // e-mail enviado não se desfaz
+      : `<button class="sec" id="ap-${i}">Já me candidatei</button><button class="btn-descartar" id="dv-${i}">Descartar</button>`;
     el.innerHTML = `
       <div class="nota-bloco ${classe}">
         <strong>${a ? esc(String(a.aderencia ?? '–')) : '…'}</strong>
@@ -683,21 +787,24 @@ function renderVagas(vagas, vistas) {
         </div>
         <h3>${esc(v.titulo)}</h3>
         <p class="vaga-empresa">${esc(v.empresa)}</p>
+        ${tambem}
         ${a?.resumo ? `<p class="vaga-resumo">${esc(a.resumo)}</p>` : ''}
         ${a?.requisitos?.length ? `<ul class="chips" aria-label="Requisitos">${a.requisitos.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}
         ${confirmar.length ? `<div class="aviso">${SVG_AVISO}<div><strong>A confirmar:</strong> ${esc(confirmar.join('; '))}</div></div>` : ''}
         <div class="vaga-acoes">
-          ${emailAcao}
+          ${situacao}
           <button class="btn-claro" id="gv-${i}">${v.pasta ? 'Ver currículo' : 'Gerar currículo'}</button>
           <a class="link-vaga" href="${esc(a?.urlOficial || v.url)}" target="_blank" rel="noopener noreferrer">Abrir vaga${SVG_SETA}</a>
-          <button class="btn-descartar" id="dv-${i}">Descartar</button>
+          ${acaoFinal}
         </div>
       </div>`;
     lista.append(el);
     const ev = $(`#ev-${i}`);
     if (ev) ev.onclick = () => abrirEmail(v, `#ev-${i}`);
     $(`#gv-${i}`).onclick = () => gerarDaVaga(v, `#gv-${i}`);
-    $(`#dv-${i}`).onclick = () => descartarVaga(v);
+    if ($(`#ap-${i}`)) $(`#ap-${i}`).onclick =() => (aplicada ? desfazerCandidatura(v) : aplicarCandidatura(v));
+    const dv = $(`#dv-${i}`);
+    if (dv) dv.onclick = () => descartarVaga(v);
   });
 }
 
@@ -720,6 +827,30 @@ async function gerarDaVaga(v, sel) {
 async function descartarVaga(v) {
   try {
     await api(`/api/vagas/${encodeURIComponent(v.id)}/descartar`, { method: 'POST' });
+    carregarVagas();
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+async function aplicarCandidatura(v) {
+  try {
+    await api(`/api/vagas/${encodeURIComponent(v.id)}/aplicar`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({}),
+    });
+    toast('Marcada como candidatura feita');
+    carregarVagas();
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+async function desfazerCandidatura(v) {
+  try {
+    await api(`/api/vagas/${encodeURIComponent(v.id)}/aplicar`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ desfazer: true }),
+    });
+    toast('Candidatura desfeita');
     carregarVagas();
   } catch (e) {
     toast(e.message);
@@ -828,12 +959,13 @@ async function carregarPrefs() {
   for (const m of MODS) f[m].checked = p.modalidades[m];
   f.perfil.value = p.perfil;
   f.observacoes.value = p.observacoes;
+  f.diasMaximos.value = p.diasMaximos ?? 5;
 }
 
 $('#prefs-form').onsubmit = async (ev) => {
   ev.preventDefault();
   const f = ev.currentTarget.elements;
-  const p = { perfil: f.perfil.value, observacoes: f.observacoes.value, modalidades: {} };
+  const p = { perfil: f.perfil.value, observacoes: f.observacoes.value, diasMaximos: Number(f.diasMaximos.value), modalidades: {} };
   for (const k of LISTAS_PREFS) p[k] = f[k].value.split(',').map((s) => s.trim()).filter(Boolean);
   for (const m of MODS) p.modalidades[m] = f[m].checked;
   limparErro('#erro-prefs');

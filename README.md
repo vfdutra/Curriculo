@@ -35,6 +35,7 @@ O servidor (`node servidor.mjs`) busca vagas ao subir e depois a cada 1 h. Elas 
   - termos de busca;
   - palavras de área;
   - níveis excluídos e exceções;
+  - prazo máximo desde a publicação (padrão 5 dias; vagas mais antigas não entram, não são avaliadas e não aparecem na lista);
   - perfil e observações para o avaliador.
 
   Ao salvar, a lista é refiltrada na hora e a próxima busca já usa as novas preferências.
@@ -48,6 +49,8 @@ O servidor (`node servidor.mjs`) busca vagas ao subir e depois a cada 1 h. Elas 
   - Lista os requisitos, marca o que não está claro e dá nota de aderência ao `base/banco.md`.
   - Inscrição aberta e aceita-Brasil são decididos no código: Gupy, Himalayas e GitHub já listam só vagas abertas; prazos vencidos e restrições de país são checados. Resultados da busca web vêm confirmados pela própria busca.
   - Vagas que claramente não servem são descartadas com o motivo.
+- **Já me candidatei**: marque no card (o envio por e-mail marca sozinho); a vaga vai para o filtro **Aplicadas** e sai da fila de avaliação.
+- A mesma vaga encontrada em vários sites aparece uma vez só, com os outros links em **Também em**.
 - **Gerar currículo** numa vaga roda o adaptador (Claude) com a descrição dela e lembra a pasta gerada.
 - O estado fica em `dados/vagas.json`, fora do git.
 - `node buscador.mjs` roda um ciclo avulso. Com `BUSCADOR=0`, o servidor sobe sem o agendador.
