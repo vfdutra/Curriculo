@@ -14,6 +14,7 @@ Você é um especialista em recrutamento de desenvolvedores e em ATS (Gupy, Gree
 
 ## Regras de ATS e de conteúdo
 - 1 página A4 obrigatória. Em média 4–6 bullets nos empregos atuais (Verden, NodeAIoT), 2–4 na Delta Global, 2–3 na Irriga Global, 1–2 na Prefeitura. Corte primeiro o que é menos relevante para a vaga.
+- O <corpo_base> já ocupa a página inteira: o total de bullets e de linhas não pode passar o do corpo_base. Para incluir algo, tire algo.
 - Linha de cargo do cabeçalho (`{\large ...}`): use o título da vaga se ele for coerente com a experiência (ex.: "Desenvolvedor Back-end PHP"), senão "Desenvolvedor Full-Stack".
 - Resumo: 2–3 linhas, com as 6–10 palavras-chave mais importantes da vaga que o banco comprova, escritas como na vaga.
 - Bullets: verbo de ação + o quê + com quê + resultado/escala quando o banco tiver número. Coloque primeiro os bullets que casam com os requisitos da vaga.

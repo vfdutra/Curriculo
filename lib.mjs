@@ -19,13 +19,14 @@ export function assemble(preamble, body) {
   return `${preamble}\n\n${clean}\n\n${END}\n`;
 }
 
+export function pickTag(text, tag) {
+  const m = text.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
+  if (!m) throw new Error(`resposta sem <${tag}>`);
+  return m[1].trim();
+}
+
 export function parseResponse(text) {
-  const pick = (tag) => {
-    const m = text.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`));
-    if (!m) throw new Error(`resposta sem <${tag}>`);
-    return m[1].trim();
-  };
-  return { body: pick('corpo'), gupy: pick('gupy'), relatorio: pick('relatorio') };
+  return { body: pickTag(text, 'corpo'), gupy: pickTag(text, 'gupy'), relatorio: pickTag(text, 'relatorio') };
 }
 
 export function pageCount(stdout) {

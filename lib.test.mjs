@@ -1,7 +1,7 @@
 // lib.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { splitTemplate, assemble, parseResponse, pageCount, skillsFromTex, skillsFromGupy, unknownSkills, slugify } from './lib.mjs';
+import { splitTemplate, assemble, pickTag, parseResponse, pageCount, skillsFromTex, skillsFromGupy, unknownSkills, slugify } from './lib.mjs';
 
 const TEX = '\\documentclass{article}\n\\usepackage{x}\n\\begin{document}\nCORPO\n\\end{document}\n';
 
@@ -22,6 +22,11 @@ test('assemble recoloca o end e ignora begin/end repetidos pelo LLM', () => {
   assert.equal(out.match(/\\end\{document\}/g).length, 1);
   assert.ok(out.includes('NOVO'));
   assert.ok(out.startsWith('\\documentclass'));
+});
+
+test('pickTag extrai uma tag e reclama se faltar', () => {
+  assert.equal(pickTag('a <corpo> X </corpo> b', 'corpo'), 'X');
+  assert.throws(() => pickTag('nada', 'corpo'), /<corpo>/);
 });
 
 test('parseResponse extrai as três tags', () => {
