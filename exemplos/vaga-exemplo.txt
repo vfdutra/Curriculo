@@ -1,0 +1,21 @@
+Desenvolvedor(a) Full Stack Pleno — PHP/Laravel e React
+
+Sobre a vaga
+Buscamos pessoa desenvolvedora para evoluir nossa plataforma SaaS de logística, atuando do back-end ao front-end.
+
+Requisitos obrigatórios
+- Experiência sólida com PHP 8 e Laravel
+- React com TypeScript
+- PostgreSQL e modelagem de dados
+- Construção e consumo de APIs RESTful e webhooks
+- Filas e processamento assíncrono (Redis, Horizon ou similares)
+- Testes automatizados (PHPUnit ou Pest)
+- Git e code review
+
+Diferenciais
+- Kubernetes e AWS Lambda
+- Experiência com integrações de pagamento (Pix)
+- Docker e CI/CD com GitHub Actions
+- Inglês intermediário
+
+Modelo: remoto
