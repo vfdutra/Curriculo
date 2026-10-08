@@ -172,3 +172,8 @@ test('parseAvaliacoes + aplicarAvaliacoes saneiam a saída do modelo', () => {
   assert.equal(b.motivo, 'Inscrições encerradas');
   assert.equal(c.status, 'pendente');
 });
+
+test('parseAvaliacoes aceita uma lista JSON por linha', () => {
+  const avals = parseAvaliacoes('<avaliacoes>\n[{"id":"a","aderencia":5}]\n[{"id":"b","aderencia":7}]\n</avaliacoes>');
+  assert.deepEqual(avals.map((a) => a.id), ['a', 'b']);
+});

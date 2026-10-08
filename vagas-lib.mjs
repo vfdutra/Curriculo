@@ -84,7 +84,14 @@ export function parseGithub(issues, repo) {
 }
 
 function jsonDaTag(texto, tag) {
-  return JSON.parse(pickTag(texto, tag).replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, ''));
+  const bruto = pickTag(texto, tag).replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+  try {
+    return JSON.parse(bruto);
+  } catch (e) {
+    // o DeepSeek às vezes devolve uma lista por item ("[{…}]\n[{…}]"): junta numa lista só
+    if (!/\]\s*\[/.test(bruto)) throw e;
+    return JSON.parse(bruto.replace(/\]\s*\[/g, ','));
+  }
 }
 
 export function parseBuscaWeb(texto) {
