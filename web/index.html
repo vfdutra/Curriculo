@@ -66,6 +66,17 @@
   .toolbar input[type="search"], .toolbar select { min-height: 44px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-2); color: var(--text); font: 400 14px var(--sans); outline: none; }
   .toolbar input[type="search"] { flex: 1 1 240px; min-width: 0; }
   .toolbar input[type="search"]:focus, .toolbar select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(67,97,255,.35); }
+  .toolbar select { min-width: 0; flex: 0 1 auto; }
+  .grupo-nota { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+  .grupo-nota .grupo-rotulo { font: 500 13px var(--sans); color: var(--muted); }
+
+  #paginacao { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+  #paginacao .pag { min-height: 44px; min-width: 44px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--text); font: 500 14px var(--sans); cursor: pointer; }
+  #paginacao .pag:hover:not(:disabled) { background: var(--surface-2); }
+  #paginacao .pag[aria-current="page"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+  #paginacao .pag:disabled { opacity: .45; cursor: default; }
+  #paginacao .pag-gap { color: var(--muted); padding: 0 4px; }
+  #paginacao .pag-contagem { color: var(--muted); font-size: 13px; margin-left: 6px; }
 
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; margin-bottom: 16px; }
   .vazio { color: var(--muted); font-size: 13px; }
@@ -252,6 +263,17 @@
             <option value="3">Até 3 dias</option>
             <option value="5">Até 5 dias</option>
           </select>
+          <div class="grupo-nota" role="group" aria-label="Nota">
+            <span class="grupo-rotulo">Nota</span>
+            <select id="nota-min" aria-label="Nota mínima"></select>
+            <select id="nota-max" aria-label="Nota máxima"></select>
+          </div>
+          <select id="ordenar-vagas" aria-label="Ordenar">
+            <option value="novas">Novas primeiro</option>
+            <option value="nota">Maior nota</option>
+            <option value="recentes">Publicadas mais recentemente</option>
+            <option value="prazo">Prazo de inscrição mais próximo</option>
+          </select>
           <button type="button" class="btn-descartar" id="limpar-filtros" hidden>Limpar filtros</button>
         </div>
         <div class="filtros" role="group" aria-label="Mostrar">
@@ -263,6 +285,7 @@
           <button type="button" class="filtro" data-filtro="aplicadas" aria-pressed="false">Aplicadas</button>
         </div>
         <div id="vagas-lista"></div>
+        <nav id="paginacao" aria-label="Páginas" hidden></nav>
       </div>
 
       <aside class="col-lado">
@@ -613,6 +636,15 @@ let busca = '';
 let fModalidade = '';
 let fSite = '';
 let fIdade = '';
+let notaMin = 0;
+let notaMax = 10;
+let pagina = 1;
+const POR_PAGINA = 20;
+const ORDEM = 'vagasOrdem';
+const ORDENS = ['novas', 'nota', 'recentes', 'prazo'];
+const lerOrdem = () => { try { const o = localStorage.getItem(ORDEM); return ORDENS.includes(o) ? o : 'novas'; } catch { return 'novas'; } };
+const marcarOrdem = (o) => { try { localStorage.setItem(ORDEM, o); } catch {} };
+let ordem = lerOrdem();
 const FILTROS = {
   todas: (v) => !v.aplicadaEm,
   novas: (v) => !v.aplicadaEm && v.encontrada > ultimas.vistas,
@@ -624,7 +656,14 @@ const FILTROS = {
 
 const semAcento = (s) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 
+function passaNota(v) {
+  if (notaMin === 0 && notaMax === 10) return true;
+  const n = v.avaliacao?.aderencia;
+  return typeof n === 'number' && n >= notaMin && n <= notaMax;
+}
+
 function passaToolbar(v) {
+  if (!passaNota(v)) return false;
   if (busca) {
     const alvo = semAcento([
       v.titulo, v.empresa, v.local,
@@ -660,7 +699,7 @@ function atualizarSites() {
 }
 
 function atualizarLimpar() {
-  $('#limpar-filtros').hidden = !(busca || fModalidade || fSite || fIdade);
+  $('#limpar-filtros').hidden = !(busca || fModalidade || fSite || fIdade || notaMin !== 0 || notaMax !== 10);
 }
 
 function rotulosFiltro() {
@@ -684,23 +723,63 @@ function rotulosFiltro() {
 for (const b of document.querySelectorAll('[data-filtro]')) b.onclick = () => {
   filtro = b.dataset.filtro;
   for (const o of document.querySelectorAll('[data-filtro]')) o.setAttribute('aria-pressed', String(o.dataset.filtro === filtro));
+  pagina = 1;
   renderVagas(ultimas.vagas, ultimas.vistas);
 };
 
 let tBusca;
 $('#busca-vagas').oninput = (e) => {
   clearTimeout(tBusca);
-  tBusca = setTimeout(() => { busca = e.target.value.trim(); renderVagas(ultimas.vagas, ultimas.vistas); }, 150);
+  tBusca = setTimeout(() => { busca = e.target.value.trim(); pagina = 1; renderVagas(ultimas.vagas, ultimas.vistas); }, 150);
 };
-$('#filtro-modalidade').onchange = (e) => { fModalidade = e.target.value; renderVagas(ultimas.vagas, ultimas.vistas); };
-$('#filtro-site').onchange = (e) => { fSite = e.target.value; renderVagas(ultimas.vagas, ultimas.vistas); };
-$('#filtro-idade').onchange = (e) => { fIdade = e.target.value; renderVagas(ultimas.vagas, ultimas.vistas); };
+$('#filtro-modalidade').onchange = (e) => { fModalidade = e.target.value; pagina = 1; renderVagas(ultimas.vagas, ultimas.vistas); };
+$('#filtro-site').onchange = (e) => { fSite = e.target.value; pagina = 1; renderVagas(ultimas.vagas, ultimas.vistas); };
+$('#filtro-idade').onchange = (e) => { fIdade = e.target.value; pagina = 1; renderVagas(ultimas.vagas, ultimas.vistas); };
+
+for (const id of ['nota-min', 'nota-max']) {
+  const sel = $(`#${id}`);
+  const prefixo = id === 'nota-min' ? 'de ' : 'até ';
+  sel.innerHTML = Array.from({ length: 11 }, (_, n) => `<option value="${n}">${prefixo}${n}</option>`).join('');
+}
+$('#nota-min').value = '0';
+$('#nota-max').value = '10';
+
+function lerNotas() {
+  let mn = Number($('#nota-min').value);
+  let mx = Number($('#nota-max').value);
+  if (!Number.isFinite(mn)) mn = 0;
+  if (!Number.isFinite(mx)) mx = 10;
+  if (mn > mx) {
+    const t = mn; mn = mx; mx = t;
+    $('#nota-min').value = String(mn);
+    $('#nota-max').value = String(mx);
+  }
+  notaMin = mn; notaMax = mx;
+}
+
+for (const id of ['nota-min', 'nota-max']) $(`#${id}`).onchange = () => {
+  lerNotas();
+  pagina = 1;
+  renderVagas(ultimas.vagas, ultimas.vistas);
+};
+
+$('#ordenar-vagas').value = ordem;
+$('#ordenar-vagas').onchange = (e) => {
+  ordem = e.target.value;
+  marcarOrdem(ordem);
+  pagina = 1;
+  renderVagas(ultimas.vagas, ultimas.vistas);
+};
+
 $('#limpar-filtros').onclick = () => {
   busca = ''; fModalidade = ''; fSite = ''; fIdade = '';
+  notaMin = 0; notaMax = 10; pagina = 1;
   $('#busca-vagas').value = '';
   $('#filtro-modalidade').value = '';
   $('#filtro-site').value = '';
   $('#filtro-idade').value = '';
+  $('#nota-min').value = '0';
+  $('#nota-max').value = '10';
   renderVagas(ultimas.vagas, ultimas.vistas);
 };
 
@@ -733,21 +812,98 @@ async function carregarVagas() {
   if (!$('#aba-vagas').hidden && maisNova) marcarVistas(maisNova); // viu a aba = viu as novas; o selo "Nova" some no próximo refresh
 }
 
+const idadeNum = (v) => (typeof v.idade === 'number' ? v.idade : 1e9);
+const prazoMs = (v) => {
+  if (!v.prazo) return null;
+  const t = new Date(v.prazo).getTime();
+  return Number.isNaN(t) ? null : t;
+};
+
+function ordenarVagas(lista) {
+  const copia = lista.slice();
+  if (ordem === 'nota') {
+    copia.sort((a, b) => {
+      const na = a.avaliacao?.aderencia;
+      const nb = b.avaliacao?.aderencia;
+      const ea = typeof na === 'number';
+      const eb = typeof nb === 'number';
+      if (ea && !eb) return -1;
+      if (!ea && eb) return 1;
+      if (ea && eb && na !== nb) return nb - na;
+      return idadeNum(a) - idadeNum(b);
+    });
+  } else if (ordem === 'recentes') {
+    copia.sort((a, b) => idadeNum(a) - idadeNum(b) || ((b.avaliacao?.aderencia ?? -1) - (a.avaliacao?.aderencia ?? -1)));
+  } else if (ordem === 'prazo') {
+    copia.sort((a, b) => {
+      const pa = prazoMs(a);
+      const pb = prazoMs(b);
+      const ea = pa !== null;
+      const eb = pb !== null;
+      if (ea && !eb) return -1;
+      if (!ea && eb) return 1;
+      if (ea && eb && pa !== pb) return pa - pb;
+      return idadeNum(a) - idadeNum(b);
+    });
+  } else {
+    copia.sort((a, b) => (a.encontrada < b.encontrada ? 1 : a.encontrada > b.encontrada ? -1 : 0));
+  }
+  return copia;
+}
+
+function irPara(p) {
+  pagina = p;
+  renderVagas(ultimas.vagas, ultimas.vistas);
+  const alvo = document.querySelector('.filtros') || document.querySelector('.toolbar');
+  if (alvo) alvo.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+
+function renderPaginacao(total) {
+  const nav = $('#paginacao');
+  const totalPaginas = Math.ceil(total / POR_PAGINA);
+  if (totalPaginas <= 1) { nav.hidden = true; nav.innerHTML = ''; return; }
+  nav.hidden = false;
+  const partes = [];
+  partes.push(`<button type="button" class="pag" data-pag="${pagina - 1}"${pagina === 1 ? ' disabled' : ''}>‹ Anterior</button>`);
+  const validas = [...new Set([1, pagina - 1, pagina, pagina + 1, totalPaginas])]
+    .filter((p) => p >= 1 && p <= totalPaginas).sort((a, b) => a - b);
+  let anterior = 0;
+  for (const p of validas) {
+    if (p - anterior > 1) partes.push('<span class="pag-gap">…</span>');
+    partes.push(`<button type="button" class="pag" data-pag="${p}"${p === pagina ? ' aria-current="page"' : ''}>${p}</button>`);
+    anterior = p;
+  }
+  partes.push(`<button type="button" class="pag" data-pag="${pagina + 1}"${pagina === totalPaginas ? ' disabled' : ''}>Próxima ›</button>`);
+  const inicio = (pagina - 1) * POR_PAGINA + 1;
+  const fim = Math.min(pagina * POR_PAGINA, total);
+  partes.push(`<span class="pag-contagem">Mostrando ${inicio}–${fim} de ${total}</span>`);
+  nav.innerHTML = partes.join('');
+  for (const b of nav.querySelectorAll('button[data-pag]')) b.onclick = () => irPara(Number(b.dataset.pag));
+}
+
 function renderVagas(vagas, vistas) {
   rotulosFiltro();
   atualizarLimpar();
   const lista = $('#vagas-lista');
+  const nav = $('#paginacao');
   if (!vagas.length) {
     lista.innerHTML = '<div class="card vazio">Nenhuma vaga ainda. A busca roda quando o servidor sobe e depois a cada hora.</div>';
+    nav.hidden = true; nav.innerHTML = '';
     return;
   }
-  const mostrar = vagas.filter(FILTROS[filtro] || FILTROS.todas).filter(passaToolbar);
+  const mostrar = ordenarVagas(vagas.filter(FILTROS[filtro] || FILTROS.todas).filter(passaToolbar));
   if (!mostrar.length) {
     lista.innerHTML = '<div class="card vazio">Nenhuma vaga neste filtro.</div>';
+    nav.hidden = true; nav.innerHTML = '';
     return;
   }
+  const totalPaginas = Math.max(1, Math.ceil(mostrar.length / POR_PAGINA));
+  if (pagina > totalPaginas) pagina = totalPaginas;
+  if (pagina < 1) pagina = 1;
+  const inicio = (pagina - 1) * POR_PAGINA;
+  const daPagina = mostrar.slice(inicio, inicio + POR_PAGINA);
   lista.innerHTML = '';
-  mostrar.forEach((v, i) => {
+  daPagina.forEach((v, i) => {
     const a = v.avaliacao;
     const aplicada = !!v.aplicadaEm;
     const classe = a && a.aderencia >= 9 ? 'alta' : a && a.aderencia >= 7 ? 'media' : 'baixa';
@@ -806,6 +962,7 @@ function renderVagas(vagas, vistas) {
     const dv = $(`#dv-${i}`);
     if (dv) dv.onclick = () => descartarVaga(v);
   });
+  renderPaginacao(mostrar.length);
 }
 
 async function gerarDaVaga(v, sel) {
