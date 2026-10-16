@@ -43,7 +43,7 @@ export async function gerar(vaga, log = console.log) {
   let result = compile();
   let body = r.body;
   for (let i = 1; i <= 2 && result.paginas > 1; i++) {
-    const ajuste = `${instrucoes}\n\n<banco>\n${banco}\n</banco>\n\n<corpo_atual>\n${body}\n</corpo_atual>\n\n<vaga>\n${vaga}\n</vaga>\n\nAJUSTE: o corpo_atual compilou em ${result.paginas} páginas A4 e precisa caber em 1. Condense ou remova os bullets menos relevantes para a vaga, começando pelos empregos mais antigos e pelos bullets que quebram em 2 linhas, até caber em 1 página. Mantenha todas as regras acima. Responda SOMENTE com <corpo>...</corpo>.`;
+    const ajuste = `${instrucoes}\n\n<banco>\n${banco}\n</banco>\n\n<corpo_atual>\n${body}\n</corpo_atual>\n\n<vaga>\n${vaga}\n</vaga>\n\nAJUSTE: o corpo_atual compilou em ${result.paginas} páginas A4 e precisa caber em 1. Corte só o necessário: encurte bullets que quebram em 2 linhas e, se ainda não couber, remova 1–2 bullets menos relevantes para a vaga, começando pelos empregos mais antigos. A página deve continuar cheia até o fim, então não corte mais do que o excesso. Mantenha todas as regras acima. Responda SOMENTE com <corpo>...</corpo>.`;
     log(`PDF com ${result.paginas} páginas, condensando (tentativa ${i}/2)...`);
     const ajusteOut = await askClaude(ajuste);
     writeFileSync(join(outDir, `resposta-ajuste-${i}.txt`), ajusteOut);
