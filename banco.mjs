@@ -2,16 +2,17 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { askClaude } from './claude.mjs';
+import { perguntar } from './ia.mjs';
+import { caminho } from './perfil.mjs';
 import { promptBanco, pickTag } from './lib.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 
-export async function proporBanco({ texto, pdfPath } = {}) {
-  const banco = readFileSync(join(root, 'base', 'banco.md'), 'utf8');
+// pdf = { nome, dados: Buffer } quando a fonte for um arquivo; a camada de IA decide como entregá-lo.
+export async function proporBanco({ texto, pdf } = {}) {
+  const banco = readFileSync(caminho('banco.md'), 'utf8');
   const instrucoes = readFileSync(join(root, 'prompt-banco.md'), 'utf8');
-  const prompt = promptBanco(instrucoes, banco, { texto, pdfPath });
-  // com PDF, o Claude precisa da ferramenta Read para abrir o arquivo
-  const out = await askClaude(prompt, { cwd: root, args: pdfPath ? ['--allowedTools', 'Read'] : [] });
+  const prompt = promptBanco(instrucoes, banco, { texto, pdf });
+  const out = await perguntar('gerador', prompt, { pdf });
   return { resumo: pickTag(out, 'resumo'), banco: `${pickTag(out, 'banco')}\n` };
 }

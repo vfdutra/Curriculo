@@ -5,15 +5,18 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { askClaude } from './claude.mjs';
 import { splitTemplate, assemble, parseResponse, pickTag, pageCount, skillsFromTex, skillsFromGupy, unknownSkills, slugify } from './lib.mjs';
+import { parseAts } from './ats.mjs';
+import { perguntar } from './ia.mjs';
+import { caminho, nomeArquivo } from './perfil.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 
 export async function gerar(vaga, log = console.log) {
-  const banco = readFileSync(join(root, 'base', 'banco.md'), 'utf8');
+  const banco = readFileSync(caminho('banco.md'), 'utf8');
   const instrucoes = readFileSync(join(root, 'prompt.md'), 'utf8');
-  const { preamble, body: corpoBase } = splitTemplate(readFileSync(join(root, 'base', 'curriculo.tex'), 'utf8'));
+  const { preamble, body: corpoBase } = splitTemplate(readFileSync(join(root, 'base', 'modelo.tex'), 'utf8'));
+  const arquivo = await nomeArquivo();
 
   const pasta = `${new Date().toISOString().slice(0, 10)}-${slugify(vaga)}`;
   const outDir = join(root, 'saidas', pasta);
@@ -22,14 +25,23 @@ export async function gerar(vaga, log = console.log) {
 
   const prompt = `${instrucoes}\n\n<banco>\n${banco}\n</banco>\n\n<corpo_base>\n${corpoBase}\n</corpo_base>\n\n<vaga>\n${vaga}\n</vaga>\n`;
 
-  log('Gerando com o Claude (pode levar 1–2 min)...');
-  const out = await askClaude(prompt);
+  log('Gerando o currículo com o provedor de IA (pode levar 1–2 min)...');
+  const out = await perguntar('gerador', prompt);
   writeFileSync(join(outDir, 'resposta.txt'), out); // resposta crua, pra depurar o parse
 
   const r = parseResponse(out);
-  const texFile = join(outDir, 'Vinicius_Dutra_Curriculo.tex');
+  const texFile = join(outDir, `${arquivo}.tex`);
   writeFileSync(texFile, assemble(preamble, r.body));
   writeFileSync(join(outDir, 'gupy.md'), `${r.gupy}\n`);
+
+  const avisos = [];
+  // palavras-chave da vaga para a pontuação ATS: se o modelo não devolver a tag, a geração segue sem ela
+  try {
+    const { palavras } = parseAts(out);
+    writeFileSync(join(outDir, 'ats.json'), JSON.stringify({ palavras }, null, 2));
+  } catch (e) {
+    avisos.push(`pontuação ATS indisponível: ${e.message}`);
+  }
 
   // ponytail: pdflatex síncrono (~2 s) trava o servidor esse tempo; aceitável para uso local
   const compile = () => {
@@ -45,7 +57,7 @@ export async function gerar(vaga, log = console.log) {
   for (let i = 1; i <= 2 && result.paginas > 1; i++) {
     const ajuste = `${instrucoes}\n\n<banco>\n${banco}\n</banco>\n\n<corpo_atual>\n${body}\n</corpo_atual>\n\n<vaga>\n${vaga}\n</vaga>\n\nAJUSTE: o corpo_atual compilou em ${result.paginas} páginas A4 e precisa caber em 1. Corte só o necessário: encurte bullets que quebram em 2 linhas e, se ainda não couber, remova 1–2 bullets menos relevantes para a vaga, começando pelos empregos mais antigos. A página deve continuar cheia até o fim, então não corte mais do que o excesso. Mantenha todas as regras acima. Responda SOMENTE com <corpo>...</corpo>.`;
     log(`PDF com ${result.paginas} páginas, condensando (tentativa ${i}/2)...`);
-    const ajusteOut = await askClaude(ajuste);
+    const ajusteOut = await perguntar('gerador', ajuste);
     writeFileSync(join(outDir, `resposta-ajuste-${i}.txt`), ajusteOut);
     body = pickTag(ajusteOut, 'corpo');
     writeFileSync(texFile, assemble(preamble, body));
@@ -54,8 +66,7 @@ export async function gerar(vaga, log = console.log) {
 
   const desconhecidas = unknownSkills([...skillsFromTex(body), ...skillsFromGupy(r.gupy)], banco);
 
-  const avisos = [];
-  if (result.status !== 0) avisos.push(`pdflatex falhou, veja ${join(outDir, 'Vinicius_Dutra_Curriculo.log')}`);
+  if (result.status !== 0) avisos.push(`pdflatex falhou, veja ${join(outDir, `${arquivo}.log`)}`);
   if (result.paginas !== null && result.paginas > 1) avisos.push(`PDF com ${result.paginas} páginas, esperado 1: corte bullets no .tex e recompile`);
   if (desconhecidas.length) avisos.push(`habilidades fora do banco (pode ser invenção, revise): ${[...new Set(desconhecidas)].join(', ')}`);
 
@@ -64,7 +75,7 @@ export async function gerar(vaga, log = console.log) {
     `${r.relatorio}\n\n## Avisos automáticos\n${avisos.map((a) => `- ${a}`).join('\n') || '- nenhum'}\n`,
   );
 
-  return { pasta, outDir, avisos, status: result.status };
+  return { pasta, outDir, avisos, status: result.status, arquivo };
 }
 
 // CLI: só roda quando o arquivo é executado direto, não quando o servidor importa

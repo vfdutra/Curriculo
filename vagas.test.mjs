@@ -14,12 +14,12 @@ test('textoDeHtml tira tags, decodifica entidades e quebra blocos em linhas', ()
 test('parseGupy normaliza as vagas do __NEXT_DATA__', () => {
   const [v] = parseGupy(gupyHtml([{
     id: 1, name: 'Dev PHP', careerPageName: 'Acme', jobUrl: 'https://acme.gupy.io/job/x?jobBoardSource=gupy_portal',
-    workplaceType: 'hybrid', city: 'Santa Maria', state: 'Rio Grande do Sul',
+    workplaceType: 'hybrid', city: 'Curitiba', state: 'Paraná',
     publishedDate: '2026-10-08T00:00:00.000Z', applicationDeadline: null, description: ' Requisitos: PHP ',
   }]));
   assert.deepEqual(v, {
     id: 'gupy:1', fonte: 'Gupy', url: 'https://acme.gupy.io/job/x?jobBoardSource=gupy_portal', titulo: 'Dev PHP',
-    empresa: 'Acme', local: 'Santa Maria, Rio Grande do Sul', modalidade: 'hibrido',
+    empresa: 'Acme', local: 'Curitiba, Paraná', modalidade: 'hibrido',
     publicada: '2026-10-08T00:00:00.000Z', prazo: null, restricoes: ['Brazil'], descricao: 'Requisitos: PHP',
   });
 });
@@ -48,7 +48,7 @@ test('parseHimalayas normaliza e resume listas longas de países', () => {
 test('parseGithub tira modalidade e empresa do título e ignora PRs', () => {
   const issues = [
     { number: 1, title: '[Remoto] Full-stack Engineer React.js • Node.js (Strider))', labels: [], html_url: 'https://github.com/backend-br/vagas/issues/1', created_at: '2026-10-07T00:00:00Z', body: 'Requisitos' },
-    { number: 2, title: '[Híbrido - Santa Maria/RS] Dev PHP na Acme Tech', labels: [{ name: 'Pleno' }], html_url: 'u2', created_at: 'd', body: null },
+    { number: 2, title: '[Híbrido - Curitiba/PR] Dev PHP na Acme Tech', labels: [{ name: 'Pleno' }], html_url: 'u2', created_at: 'd', body: null },
     { number: 3, title: 'PR qualquer', labels: [], pull_request: {}, html_url: 'u3', created_at: 'd', body: '' },
   ];
   const [a, b, ...resto] = parseGithub(issues, 'backend-br/vagas');
@@ -59,7 +59,7 @@ test('parseGithub tira modalidade e empresa do título e ignora PRs', () => {
   assert.equal(a.empresa, 'Strider');
   assert.equal(b.modalidade, 'hibrido');
   assert.equal(b.empresa, 'Acme Tech');
-  assert.equal(b.local, 'Híbrido - Santa Maria/RS');
+  assert.equal(b.local, 'Híbrido - Curitiba/PR');
   assert.equal(b.descricao, '');
 });
 
@@ -82,7 +82,7 @@ const PREFS = {
   excluir: ['senior', 'sr', 'lead', 'estagio', 'intern', 'arquitet*'],
   aceitarNivel: ['junior', 'pleno'],
   paisesRemoto: ['brazil', 'brasil', 'latam', 'worldwide'],
-  cidades: ['Santa Maria'],
+  cidades: ['Curitiba'],
 };
 const base = { titulo: 'Desenvolvedor PHP', empresa: 'Acme', local: 'Brasil', modalidade: 'remoto', restricoes: ['Brazil'] };
 
@@ -106,14 +106,14 @@ test('passaFiltro aplica área, nível e modalidade das preferências', () => {
     [{ titulo: 'SRE Engineer', restricoes: [] }, true],
     [{ titulo: 'Software Engineer', restricoes: ['United States'] }, false],
     [{ titulo: 'AI Engineer', restricoes: ['LATAM'] }, true],
-    [{ titulo: 'Dev Full Stack', modalidade: 'hibrido', local: 'Santa Maria, Rio Grande do Sul' }, true],
+    [{ titulo: 'Dev Full Stack', modalidade: 'hibrido', local: 'Curitiba, Paraná' }, true],
     [{ titulo: 'Dev Full Stack', modalidade: 'hibrido', local: 'São Paulo, SP' }, false],
-    [{ titulo: 'Dev Full Stack', modalidade: 'presencial', local: 'Santa Maria' }, false],
+    [{ titulo: 'Dev Full Stack', modalidade: 'presencial', local: 'Curitiba' }, false],
     [{ titulo: 'Dev Full Stack', modalidade: 'indefinida', local: '?' }, true],
   ];
   for (const [mudanca, esperado] of casos) assert.equal(passaFiltro({ ...base, ...mudanca }, PREFS), esperado, JSON.stringify(mudanca));
   const comPresencial = { ...PREFS, modalidades: { ...PREFS.modalidades, presencial: true } };
-  assert.equal(passaFiltro({ ...base, titulo: 'Dev Full Stack', modalidade: 'presencial', local: 'Santa Maria' }, comPresencial), true);
+  assert.equal(passaFiltro({ ...base, titulo: 'Dev Full Stack', modalidade: 'presencial', local: 'Curitiba' }, comPresencial), true);
   const semRemoto = { ...PREFS, modalidades: { ...PREFS.modalidades, remoto: false } };
   assert.equal(passaFiltro(base, semRemoto), false);
 });
@@ -127,9 +127,10 @@ test('validarPreferencias limpa listas e recusa preferências impossíveis', () 
   assert.equal(validarPreferencias({ ...PREFS, modalidades: { remoto: true }, cidades: [] }).modalidades.hibrido, false);
 });
 
-test('base/preferencias.json padrão é válido', () => {
-  const p = JSON.parse(readFileSync(new URL('./base/preferencias.json', import.meta.url), 'utf8'));
-  assert.doesNotThrow(() => validarPreferencias(p));
+test('base/preferencias.exemplo.json é um modelo incompleto que fica válido ao informar os termos', () => {
+  const p = JSON.parse(readFileSync(new URL('./base/preferencias.exemplo.json', import.meta.url), 'utf8'));
+  assert.throws(() => validarPreferencias(p), /termo de busca/);
+  assert.doesNotThrow(() => validarPreferencias({ ...p, termos: ['desenvolvedor'] }));
 });
 
 test('mesclar põe as novas na frente e não duplica por id nem por empresa+título', () => {

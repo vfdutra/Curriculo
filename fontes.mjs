@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { askCommandCode } from './commandcode.mjs';
+import { perguntar, configurado } from './ia.mjs';
 import { parseGupy, parseHimalayas, parseGithub, parseBuscaWeb } from './vagas-lib.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -55,8 +55,9 @@ export async function buscarGithub() {
 }
 
 export async function buscarWeb(p) {
+  if (!configurado('busca')) throw new Error('Busca web não configurada (aba Configuração).');
   const prompt = `${readFileSync(join(root, 'prompt-busca.md'), 'utf8')}\n\n<preferencias>\n${JSON.stringify(p, null, 1)}\n</preferencias>`;
-  return parseBuscaWeb(await askCommandCode(prompt));
+  return parseBuscaWeb(await perguntar('busca', prompt, { web: true, timeoutMs: 15 * 60_000 }));
 }
 
 export const FONTES = { Gupy: buscarGupy, Himalayas: buscarHimalayas, GitHub: buscarGithub, 'Busca web': buscarWeb };

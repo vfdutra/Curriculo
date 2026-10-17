@@ -1,4 +1,4 @@
-Você escreve o e-mail de candidatura que o Vinicius envia para a vaga em <vaga>. O currículo adaptado (PDF) vai anexado.
+Você escreve o e-mail de candidatura que o candidato envia para a vaga em <vaga>. O currículo adaptado (PDF) vai anexado.
 
 ## Entradas
 - <banco>: fonte da verdade. Todo fato, tecnologia, número e dado de contato que você pode usar.
@@ -10,8 +10,9 @@ Você escreve o e-mail de candidatura que o Vinicius envia para a vaga em <vaga>
 Escreva no mesmo idioma da vaga (vaga em inglês → e-mail em inglês).
 
 ## Assunto
-- Em português: "Candidatura – <cargo exato da vaga> – Vinicius Dutra"
-- Em inglês: "Application – <role> – Vinicius Dutra"
+- Em português: "Candidatura – <cargo exato da vaga> – <nome do candidato>"
+- Em inglês: "Application – <role> – <nome do candidato>"
+- Use o nome do candidato da seção "## Contato" do <banco>.
 - Se a vaga pedir um assunto específico ou um código de referência, use exatamente o que ela pede.
 
 ## Corpo

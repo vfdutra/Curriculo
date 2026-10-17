@@ -78,9 +78,14 @@ export function listarSaidas(entradas) {
     .map(({ nome, titulo }) => ({ pasta: nome, data: nome.slice(0, 10), titulo: titulo || nome.slice(11).replace(/-/g, ' ') }));
 }
 
-export function promptBanco(instrucoes, banco, { texto, pdfPath } = {}) {
-  if (!texto && !pdfPath) throw new Error('informe texto ou pdfPath');
-  const fonte = pdfPath ? `Leia o currículo em PDF no arquivo: ${pdfPath}` : texto;
+// pdf = { nome, dados } vai anexado pela camada de IA; pdfPath é o caminho lido pela ferramenta Read do CLI.
+export function promptBanco(instrucoes, banco, { texto, pdf, pdfPath } = {}) {
+  if (!texto && !pdf && !pdfPath) throw new Error('informe texto ou pdfPath');
+  const fonte = pdf
+    ? 'O currículo em PDF está anexado.'
+    : pdfPath
+      ? `Leia o currículo em PDF no arquivo: ${pdfPath}`
+      : texto;
   return `${instrucoes}\n\n<banco>\n${banco}\n</banco>\n\n<fonte>\n${fonte}\n</fonte>\n`;
 }
 

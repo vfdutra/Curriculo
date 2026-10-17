@@ -39,17 +39,17 @@ test('parseRascunho extrai assunto e corpo, e reclama de tag vazia', () => {
 });
 
 test('montarMensagem monta o multipart com anexo, assunto codificado e só CRLF', () => {
-  const anexo = { nome: 'Vinicius_Dutra_Curriculo.pdf', dados: Buffer.from('%PDF-1.4 conteúdo binário') };
+  const anexo = { nome: 'Fulano_Silva_Curriculo.pdf', dados: Buffer.from('%PDF-1.4 conteúdo binário') };
   const msg = montarMensagem({
     de: 'fulano@example.com',
-    nomeDe: 'Vinicius Dutra',
+    nomeDe: 'Fulano Silva',
     para: 'rh@acme.com',
     assunto: 'Candidatura – Desenvolvedor Júnior',
     corpo: 'Olá,\r\nsegue o currículo.',
     anexo,
     data: new Date('2026-10-08T12:00:00Z'),
   });
-  assert.match(msg, /^From: =\?UTF-8\?B\?[^?]+\?= <fulano@example\.com>\r\n/);
+  assert.match(msg, /^From: =\?UTF-8\?B\?[^?]+\?= <fulano@example.com>\r\n/);
   assert.ok(msg.includes('To: <rh@acme.com>'));
   assert.ok(msg.includes('Date: Thu, 08 Oct 2026 12:00:00 GMT'));
   assert.ok(msg.includes('Content-Type: multipart/mixed; boundary="curriculo-'));
@@ -58,7 +58,7 @@ test('montarMensagem monta o multipart com anexo, assunto codificado e só CRLF'
   assert.equal(Buffer.from(assuntoB64, 'base64').toString('utf8'), 'Candidatura – Desenvolvedor Júnior');
   assert.match(msg, /^Subject: =\?UTF-8\?B\?/m, 'assunto vai codificado em base64');
 
-  const marcador = 'filename="Vinicius_Dutra_Curriculo.pdf"';
+  const marcador = 'filename="Fulano_Silva_Curriculo.pdf"';
   const resto = msg.slice(msg.indexOf(marcador) + marcador.length);
   const anexoB64 = resto.slice(resto.indexOf('\r\n\r\n') + 4).split('\r\n--')[0].replace(/\r\n/g, '');
   assert.deepEqual(Buffer.from(anexoB64, 'base64'), anexo.dados);

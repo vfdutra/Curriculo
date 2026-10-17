@@ -1,0 +1,39 @@
+{
+  "perfil": "",
+  "observacoes": "",
+  "modalidades": {
+    "remoto": true,
+    "hibrido": false,
+    "presencial": false
+  },
+  "termos": [],
+  "area": [
+    "desenvolv*",
+    "programad*",
+    "developer",
+    "engineer",
+    "engenheir*",
+    "software",
+    "full stack",
+    "fullstack",
+    "back end",
+    "backend",
+    "front end",
+    "frontend",
+    "mobile",
+    "ia",
+    "ai",
+    "inteligência artificial",
+    "machine learning",
+    "ml",
+    "llm*"
+  ],
+  "excluir": [],
+  "aceitarNivel": [],
+  "diasMaximos": 5,
+  "paisesRemoto": [
+    "worldwide",
+    "anywhere"
+  ],
+  "cidades": []
+}

@@ -1,0 +1,128 @@
+%-------------------------
+% Currículo (modelo ATS)
+%-------------------------
+\documentclass[a4paper,10pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern} % fonte vetorial T1; sem ela o MiKTeX gera bitmap
+\usepackage[portuguese]{babel}
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\setlength{\footskip}{3.7pt}
+\usepackage{tabularx}
+\usepackage{geometry}
+
+% Texto do PDF legível por ATS (copiar/colar e extração corretos)
+\input{glyphtounicode}
+\pdfgentounicode=1
+
+\geometry{top=0.5in, bottom=0.5in, left=0.5in, right=0.5in}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Formatação das seções
+\titleformat{\section}{
+  \vspace{-6pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-4pt}]
+
+%-------------------------
+% Comandos customizados
+%-------------------------
+\newcommand{\resumeItem}[1]{
+  \item\small{#1 \vspace{-2pt}}
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-1pt}\item
+    \begin{tabular*}{\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & \small #2 \\
+      \textit{\small #3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-5pt}
+}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=0.15in]}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-2pt}}
+
+%=========================
+\begin{document}
+%=========================
+
+%----------CABEÇALHO----------
+\begin{center}
+  {\LARGE \textbf{NOME COMPLETO}} \\[4pt]
+  \small
+  Cidade, UF $|$
+  telefone $|$
+  e-mail $|$
+  linkedin $|$
+  github
+\end{center}
+
+%---------EXPERIÊNCIA---------
+\section{Experiência Profissional}
+\resumeSubHeadingListStart
+
+  % [Empresa mais recente]
+  \resumeSubheading
+    {[Empresa]}{[Mês Ano] -- Atual}
+    {[Cargo]}{[Cidade, UF]}
+  \resumeItemListStart
+    \resumeItem{[Frente de trabalho 1]}
+    \resumeItem{[Frente de trabalho 2]}
+    \resumeItem{[Frente de trabalho 3]}
+  \resumeItemListEnd
+
+  % [Empresa anterior]
+  \resumeSubheading
+    {[Empresa]}{[Mês Ano] -- [Mês Ano]}
+    {[Cargo]}{[Cidade, UF]}
+  \resumeItemListStart
+    \resumeItem{[Frente de trabalho 1]}
+    \resumeItem{[Frente de trabalho 2]}
+    \resumeItem{[Frente de trabalho 3]}
+  \resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+%---------HABILIDADES---------
+\section{Habilidades}
+\begin{itemize}[leftmargin=0in, label={}]
+  \small{\item{
+    \textbf{Técnicas:} [tecnologias, na grafia do banco] \\
+    \textbf{Idiomas:} [Português (nativo), Inglês (nível)]
+  }}
+\end{itemize}
+
+%---------FORMAÇÃO---------
+\section{Formação}
+\resumeSubHeadingListStart
+  \resumeSubheading
+    {[Instituição]}{[ano] -- [ano]}
+    {[Curso]}{[Cidade, UF]}
+\resumeSubHeadingListEnd
+
+%---------CERTIFICAÇÕES---------
+\section{Certificações}
+\begin{itemize}[leftmargin=0in, label={}]
+  \small{\item{[Certificação] ([emissor])}}
+\end{itemize}
+
+\end{document}
